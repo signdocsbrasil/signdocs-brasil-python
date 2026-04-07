@@ -1,0 +1,4 @@
+# Exclude from git archive / release tarballs
+tests/           export-ignore
+.gitattributes   export-ignore
+MANIFEST.in      export-ignore

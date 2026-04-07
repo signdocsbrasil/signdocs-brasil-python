@@ -83,7 +83,10 @@ class AddEnvelopeSessionRequest:
     metadata: dict[str, str] | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        signer: dict[str, Any] = {"name": self.signer_name, "userExternalId": self.signer_user_external_id}
+        signer: dict[str, Any] = {
+            "name": self.signer_name,
+            "userExternalId": self.signer_user_external_id,
+        }
         if self.signer_cpf is not None:
             signer["cpf"] = self.signer_cpf
         if self.signer_cnpj is not None:

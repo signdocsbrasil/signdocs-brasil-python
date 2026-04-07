@@ -153,7 +153,7 @@ CompleteStepResponse = Step
 class StepListResponse:
     """Response containing a list of steps."""
 
-    steps: list
+    steps: list[Any]
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> StepListResponse:
@@ -170,7 +170,7 @@ class StepCompleteResponse:
     type: str
     status: str
     attempts: int
-    result: dict | None = None
+    result: dict[str, Any] | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> StepCompleteResponse:

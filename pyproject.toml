@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "signdocs-brasil"
-version = "1.1.0"
+version = "1.1.1"
 description = "Official Python SDK for the SignDocs Brasil API"
 readme = "README.md"
 license = {text = "MIT"}
@@ -41,8 +41,8 @@ dev = [
 
 [project.urls]
 Homepage = "https://signdocs.com.br"
-Documentation = "https://docs.signdocs.com.br/sdk/python"
-Repository = "https://github.com/signdocs/signdocs-brasil-python"
+Documentation = "https://docs.signdocs.com.br"
+Repository = "https://github.com/signdocsbrasil/signdocs-brasil-python"
 
 [tool.setuptools.packages.find]
 include = ["signdocs_brasil*"]

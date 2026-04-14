@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-04-14
+
+### Added
+
+- `client.verification.verify_envelope(envelope_id)` — public resource method for the new `GET /v1/verify/envelope/{envelopeId}` endpoint. Returns envelope status, signers list (each with `evidence_id` for drill-down via `verification.verify()`), and consolidated download URLs.
+- `EnvelopeVerificationResponse`, `EnvelopeVerificationSigner`, `EnvelopeVerificationDownloads`, and `VerificationDownloadItem` models. For non-PDF envelopes signed with digital certificates, `downloads.consolidated_signature` exposes a single PKCS#7 / CMS detached `.p7s` containing every signer's `SignerInfo`. For PDF envelopes, `downloads.combined_signed_pdf` exposes the merged PDF.
+- `VerificationSigner.cpf_cnpj` and `VerificationResponse.tenant_cnpj` fields (previously returned by the API but not modeled by the SDK).
+- `VerificationDownloads.original_document` and `signed_signature` fields (previously undocumented), matching the real shape the API returns.
+
+### Changed
+
+- `VerificationDownloads.signed_signature` is now `None` when the evidence belongs to a multi-signer envelope (the API omits the field). For standalone signing sessions (single-signer non-PDF with digital certificate) the field is still populated. To retrieve the consolidated `.p7s` for an envelope, use `client.verification.verify_envelope()` instead.
+
+### Removed
+
+- `VerificationDownloads.signed_pdf` — the field was modeled by the SDK but never actually returned by the API. No real-world consumer could have depended on it.
+
 ## [1.1.0] - 2026-03-27
 
 ### Added

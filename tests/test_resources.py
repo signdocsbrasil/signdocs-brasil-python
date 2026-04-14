@@ -496,17 +496,21 @@ class TestVerificationResource:
         http.request.return_value = {
             "evidenceId": "ev_1",
             "downloads": {
+                "originalDocument": {
+                    "url": "https://example.com/original.pdf",
+                    "filename": "contrato.pdf",
+                },
                 "evidencePack": {
                     "url": "https://example.com/evidence-pack.p7m",
                     "filename": "evidence-pack.p7m",
                 },
-                "signedPdf": {
-                    "url": "https://example.com/signed.pdf",
-                    "filename": "signed.pdf",
-                },
                 "finalPdf": {
                     "url": "https://example.com/final.pdf",
                     "filename": "final.pdf",
+                },
+                "signedSignature": {
+                    "url": "https://example.com/signature.p7s",
+                    "filename": "signature.p7s",
                 },
             },
         }
@@ -518,9 +522,89 @@ class TestVerificationResource:
             "GET", "/v1/verify/ev_1/downloads", no_auth=True, timeout=None,
         )
         assert result.evidence_id == "ev_1"
+        assert result.downloads.original_document.filename == "contrato.pdf"
         assert result.downloads.evidence_pack.url == "https://example.com/evidence-pack.p7m"
-        assert result.downloads.signed_pdf.filename == "signed.pdf"
         assert result.downloads.final_pdf.filename == "final.pdf"
+        assert result.downloads.signed_signature.filename == "signature.p7s"
+
+    def test_downloads_envelope_member_omits_signed_signature(self):
+        http = mock_http()
+        http.request.return_value = {
+            "evidenceId": "ev_2",
+            "downloads": {
+                "originalDocument": None,
+                "evidencePack": {
+                    "url": "https://example.com/evidence-pack.p7m",
+                    "filename": "evidence-pack.p7m",
+                },
+                "finalPdf": None,
+            },
+        }
+        verification = VerificationResource(http)
+
+        result = verification.downloads("ev_2")
+
+        assert result.downloads.original_document is None
+        assert result.downloads.final_pdf is None
+        assert result.downloads.signed_signature is None
+        assert result.downloads.evidence_pack.filename == "evidence-pack.p7m"
+
+    def test_verify_envelope_no_auth(self):
+        http = mock_http()
+        http.request.return_value = {
+            "envelopeId": "env_1",
+            "status": "COMPLETED",
+            "signingMode": "SEQUENTIAL",
+            "totalSigners": 2,
+            "completedSessions": 2,
+            "documentHash": "sha256:abc",
+            "tenantName": "Acme",
+            "tenantCnpj": "12345678000100",
+            "signers": [
+                {
+                    "signerIndex": 1,
+                    "displayName": "João Silva",
+                    "cpfCnpj": "12345678901",
+                    "status": "COMPLETED",
+                    "policyProfile": "DIGITAL_CERTIFICATE",
+                    "evidenceId": "ev_a",
+                    "completedAt": "2026-04-13T18:00:00Z",
+                },
+                {
+                    "signerIndex": 2,
+                    "displayName": "Maria Souza",
+                    "status": "COMPLETED",
+                    "evidenceId": "ev_b",
+                    "completedAt": "2026-04-13T18:30:00Z",
+                },
+            ],
+            "downloads": {
+                "consolidatedSignature": {
+                    "url": "https://example.com/envelope-signature.p7s",
+                    "filename": "signature.p7s",
+                },
+            },
+            "createdAt": "2026-04-13T17:00:00Z",
+            "completedAt": "2026-04-13T18:30:00Z",
+        }
+        verification = VerificationResource(http)
+
+        result = verification.verify_envelope("env_1")
+
+        http.request.assert_called_once_with(
+            "GET", "/v1/verify/envelope/env_1", no_auth=True, timeout=None,
+        )
+        assert result.envelope_id == "env_1"
+        assert result.signing_mode == "SEQUENTIAL"
+        assert result.total_signers == 2
+        assert len(result.signers) == 2
+        assert result.signers[0].display_name == "João Silva"
+        assert result.signers[0].cpf_cnpj == "12345678901"
+        assert result.signers[1].evidence_id == "ev_b"
+        assert result.downloads is not None
+        assert result.downloads.consolidated_signature is not None
+        assert result.downloads.consolidated_signature.filename == "signature.p7s"
+        assert result.downloads.combined_signed_pdf is None
 
 
 class TestUsersResource:

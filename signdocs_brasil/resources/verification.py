@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ..models.evidence import VerificationDownloadsResponse, VerificationResponse
+from ..models.evidence import (
+    EnvelopeVerificationResponse,
+    VerificationDownloadsResponse,
+    VerificationResponse,
+)
 
 if TYPE_CHECKING:
     from .._http_client import HttpClient
@@ -59,3 +63,32 @@ class VerificationResource:
             timeout=timeout,
         )
         return VerificationDownloadsResponse.from_dict(data)
+
+    def verify_envelope(
+        self, envelope_id: str, *, timeout: int | None = None,
+    ) -> EnvelopeVerificationResponse:
+        """Verify a multi-signer envelope by its ID.
+
+        Returns the envelope status, the list of signers (each with an
+        ``evidence_id`` for drill-down via :meth:`verify`), and consolidated
+        download URLs. For non-PDF envelopes signed with digital
+        certificates, the consolidated ``.p7s`` containing every signer's
+        ``SignerInfo`` is exposed via
+        ``downloads.consolidated_signature``.
+
+        This endpoint is public and does not require authentication.
+
+        Args:
+            envelope_id: The envelope identifier.
+            timeout: Per-request timeout in milliseconds.
+
+        Returns:
+            EnvelopeVerificationResponse describing the envelope.
+        """
+        data = self._http.request(
+            "GET",
+            f"/v1/verify/envelope/{envelope_id}",
+            no_auth=True,
+            timeout=timeout,
+        )
+        return EnvelopeVerificationResponse.from_dict(data)

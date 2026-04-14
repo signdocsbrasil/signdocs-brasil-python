@@ -19,6 +19,9 @@ from .envelope import (
     EnvelopeSessionSummary,
 )
 from .evidence import (
+    EnvelopeVerificationDownloads,
+    EnvelopeVerificationResponse,
+    EnvelopeVerificationSigner,
     Evidence,
     EvidenceDocument,
     EvidenceSigner,
@@ -155,6 +158,9 @@ __all__ = [
     "VerificationDownloadItem",
     "VerificationDownloads",
     "VerificationDownloadsResponse",
+    "EnvelopeVerificationSigner",
+    "EnvelopeVerificationDownloads",
+    "EnvelopeVerificationResponse",
     # User
     "EnrollUserRequest",
     "EnrollUserResponse",

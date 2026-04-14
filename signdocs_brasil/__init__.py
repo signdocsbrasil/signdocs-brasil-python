@@ -58,7 +58,7 @@ from .errors import (
 )
 from .webhook_verifier import verify_webhook_signature
 
-__version__ = "1.1.1"
+__version__ = "1.2.0"
 
 __all__ = [
     # Client

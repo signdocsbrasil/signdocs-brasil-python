@@ -12,12 +12,27 @@ WebhookEventType = Literal[
     "TRANSACTION.FAILED",
     "TRANSACTION.EXPIRED",
     "TRANSACTION.FALLBACK",
+    "TRANSACTION.DEADLINE_APPROACHING",
     "STEP.STARTED",
     "STEP.COMPLETED",
     "STEP.FAILED",
+    "STEP.PURPOSE_DISCLOSURE_SENT",
     "QUOTA.WARNING",
     "API.DEPRECATION_NOTICE",
+    "SIGNING_SESSION.CREATED",
+    "SIGNING_SESSION.COMPLETED",
+    "SIGNING_SESSION.CANCELLED",
+    "SIGNING_SESSION.EXPIRED",
 ]
+
+#: Webhook events that are part of the NT65 INSS consignado flow. Events
+#: in this set are only emitted for tenants with ``nt65ComplianceEnabled``.
+NT65_EVENTS: frozenset[str] = frozenset(
+    {
+        "TRANSACTION.DEADLINE_APPROACHING",
+        "STEP.PURPOSE_DISCLOSURE_SENT",
+    }
+)
 
 
 @dataclass

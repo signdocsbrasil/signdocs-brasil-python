@@ -1,8 +1,14 @@
-"""OAuth2 authentication handler with token caching.
+"""OAuth2 authentication handler with pluggable token caching.
 
-Supports both ``client_secret`` and ``private_key_jwt`` (ES256) authentication modes.
-Token caching is thread-safe: concurrent callers waiting for a token refresh will
-share a single in-flight request.
+Supports both ``client_secret`` and ``private_key_jwt`` (ES256) authentication
+modes. Tokens are stored via a pluggable :class:`TokenCache` — the default
+:class:`InMemoryTokenCache` preserves the pre-1.3 behavior of a per-process
+cache. Stateless hosts (serverless, per-request workers) should inject a
+shared-store implementation (Redis, filesystem, etc.) to avoid fetching a
+fresh token on every request.
+
+Concurrent callers waiting on a refresh share a single in-flight token
+request via a per-handler ``Event``.
 """
 
 from __future__ import annotations
@@ -15,6 +21,7 @@ import jwt
 import requests as _requests
 
 from .errors import AuthenticationError
+from .token_cache import CachedToken, InMemoryTokenCache, TokenCache, derive_cache_key
 
 _TOKEN_REFRESH_BUFFER_SECONDS = 30
 
@@ -24,11 +31,14 @@ class AuthHandler:
 
     Args:
         client_id: OAuth2 client ID.
-        client_secret: OAuth2 client secret (mutually exclusive with private_key).
+        client_secret: OAuth2 client secret (mutually exclusive with
+            ``private_key``).
         private_key: PEM-encoded ES256 private key for JWT assertion.
         kid: Key ID header for the JWT.
         base_url: API base URL used to construct the token endpoint.
         scopes: OAuth2 scopes to request.
+        cache: Optional pluggable :class:`TokenCache`. Defaults to a
+            fresh :class:`InMemoryTokenCache` when ``None``.
     """
 
     def __init__(
@@ -40,16 +50,19 @@ class AuthHandler:
         kid: str | None = None,
         base_url: str,
         scopes: list[str],
+        cache: TokenCache | None = None,
     ) -> None:
         self._client_id = client_id
         self._client_secret = client_secret
         self._private_key = private_key
         self._kid = kid
-        self._token_url = f"{base_url}/oauth2/token"
+        self._base_url = base_url
+        self._token_url = f"{base_url.rstrip('/')}/oauth2/token"
         self._scopes = scopes
 
-        self._cached_token: str | None = None
-        self._expires_at: float = 0.0
+        self._cache: TokenCache = cache if cache is not None else InMemoryTokenCache()
+        self._cache_key = derive_cache_key(client_id, base_url, scopes)
+
         self._lock = threading.Lock()
         self._refresh_event: threading.Event | None = None
         self._refresh_result: str | None = None
@@ -58,8 +71,9 @@ class AuthHandler:
     def get_access_token(self) -> str:
         """Return a valid access token, refreshing if necessary.
 
-        Thread-safe: if multiple threads call this concurrently while the token
-        is expired, only one will perform the refresh; the others will wait.
+        Thread-safe: if multiple threads call this concurrently while the
+        cached token is expired, only one will perform the refresh; the
+        others will wait on the in-flight request and reuse its result.
 
         Returns:
             A valid Bearer access token string.
@@ -67,20 +81,23 @@ class AuthHandler:
         Raises:
             AuthenticationError: If the token request fails.
         """
-        now = time.time()
-        if self._cached_token and now < self._expires_at - _TOKEN_REFRESH_BUFFER_SECONDS:
-            return self._cached_token
+        cached = self._cache.get(self._cache_key)
+        if cached is not None and not cached.is_expired(
+            time.time(), skew_seconds=_TOKEN_REFRESH_BUFFER_SECONDS
+        ):
+            return cached.access_token
 
         with self._lock:
-            # Double-check after acquiring lock
-            now = time.time()
-            if self._cached_token and now < self._expires_at - _TOKEN_REFRESH_BUFFER_SECONDS:
-                return self._cached_token
+            # Double-check after acquiring the lock.
+            cached = self._cache.get(self._cache_key)
+            if cached is not None and not cached.is_expired(
+                time.time(), skew_seconds=_TOKEN_REFRESH_BUFFER_SECONDS
+            ):
+                return cached.access_token
 
-            # Check if another thread is already refreshing
+            # If another thread is already refreshing, wait on its event.
             if self._refresh_event is not None:
                 event = self._refresh_event
-                # Release lock and wait for the other thread
                 self._lock.release()
                 try:
                     event.wait()
@@ -91,13 +108,13 @@ class AuthHandler:
                 finally:
                     self._lock.acquire()
 
-            # We are the refresher
+            # We are the refresher.
             event = threading.Event()
             self._refresh_event = event
             self._refresh_error = None
             self._refresh_result = None
 
-        # Perform the refresh outside the lock
+        # Perform the refresh outside the lock.
         try:
             token = self._fetch_token()
             self._refresh_result = token
@@ -109,6 +126,14 @@ class AuthHandler:
             event.set()
             with self._lock:
                 self._refresh_event = None
+
+    def invalidate(self) -> None:
+        """Invalidate the cached token.
+
+        The next call to :meth:`get_access_token` will fetch a fresh token
+        from the authorization server.
+        """
+        self._cache.delete(self._cache_key)
 
     def _fetch_token(self) -> str:
         """Perform the OAuth2 client_credentials token exchange.
@@ -153,8 +178,10 @@ class AuthHandler:
         access_token: str = token_data["access_token"]
         expires_in: int = token_data["expires_in"]
 
-        self._cached_token = access_token
-        self._expires_at = time.time() + expires_in
+        self._cache.set(
+            self._cache_key,
+            CachedToken(access_token=access_token, expires_at=time.time() + expires_in),
+        )
 
         return access_token
 

@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from typing import Callable
 
 import requests
+
+from .response_metadata import ResponseMetadata
+from .token_cache import TokenCache
 
 DEFAULT_BASE_URL = "https://api.signdocs.com.br"
 DEFAULT_TIMEOUT = 30_000  # milliseconds
@@ -36,6 +40,14 @@ class ClientConfig:
         scopes: OAuth2 scopes to request.
         session: Optional custom ``requests.Session`` to use for HTTP calls.
         logger: Optional ``logging.Logger`` for request/response logging.
+        token_cache: Optional pluggable :class:`TokenCache`. When ``None``,
+            a fresh in-memory cache is created per client (preserves pre-1.3
+            behavior). Inject a shared-store implementation (Redis, etc.) on
+            stateless hosts so tokens are shared across workers.
+        on_response: Optional callback invoked once per HTTP response with a
+            :class:`ResponseMetadata` snapshot. Exceptions raised from the
+            callback are logged and swallowed — they do not propagate to the
+            caller.
     """
 
     client_id: str
@@ -48,6 +60,8 @@ class ClientConfig:
     scopes: list[str] = field(default_factory=lambda: list(DEFAULT_SCOPES))
     session: requests.Session | None = None
     logger: logging.Logger | None = None
+    token_cache: TokenCache | None = None
+    on_response: Callable[[ResponseMetadata], None] | None = None
 
 
 def resolve_config(config: ClientConfig) -> ClientConfig:

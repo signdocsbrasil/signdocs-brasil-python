@@ -61,6 +61,7 @@ class SignDocsBrasilClient:
             kid=resolved.kid,
             base_url=resolved.base_url,
             scopes=resolved.scopes,
+            cache=resolved.token_cache,
         )
 
         http = HttpClient(
@@ -70,6 +71,7 @@ class SignDocsBrasilClient:
             auth=auth,
             session=resolved.session,
             logger=resolved.logger,
+            on_response=resolved.on_response,
         )
 
         self.health: HealthResource = HealthResource(http)

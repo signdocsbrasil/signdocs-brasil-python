@@ -81,6 +81,7 @@ from .transaction import (
 )
 from .user import EnrollUserRequest, EnrollUserResponse
 from .webhook import (
+    NT65_EVENTS,
     RegisterWebhookRequest,
     RegisterWebhookResponse,
     Webhook,
@@ -143,6 +144,7 @@ __all__ = [
     "CompleteSigningResponse",
     # Webhook
     "WebhookEventType",
+    "NT65_EVENTS",
     "RegisterWebhookRequest",
     "RegisterWebhookResponse",
     "Webhook",

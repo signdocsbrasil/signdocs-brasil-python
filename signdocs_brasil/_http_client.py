@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from typing import Any
+from typing import Any, Callable
 
 import requests as _requests
 
@@ -16,8 +16,9 @@ from .errors import (
     TimeoutError,
     parse_api_error,
 )
+from .response_metadata import ResponseMetadata
 
-_SDK_VERSION = "1.0.0"
+_SDK_VERSION = "1.3.0"
 _USER_AGENT = f"signdocs-brasil-python/{_SDK_VERSION}"
 
 
@@ -34,6 +35,10 @@ class HttpClient:
         auth: AuthHandler instance for Bearer token management.
         session: Optional custom ``requests.Session`` to use for HTTP calls.
         logger: Optional ``logging.Logger`` for request/response logging.
+        on_response: Optional callback invoked once per HTTP response with a
+            :class:`ResponseMetadata` snapshot. Exceptions raised from the
+            callback are logged and swallowed so observability bugs never
+            break API calls.
     """
 
     def __init__(
@@ -45,6 +50,7 @@ class HttpClient:
         auth: AuthHandler,
         session: _requests.Session | None = None,
         logger: logging.Logger | None = None,
+        on_response: Callable[[ResponseMetadata], None] | None = None,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._timeout_seconds = timeout / 1000.0
@@ -53,6 +59,7 @@ class HttpClient:
         self._session = session if session is not None else _requests.Session()
         self._session.headers["User-Agent"] = _USER_AGENT
         self._logger = logger
+        self._on_response = on_response
 
     def request(
         self,
@@ -150,6 +157,16 @@ class HttpClient:
                     response.status_code,
                     duration_ms,
                 )
+
+        if self._on_response is not None:
+            try:
+                metadata = ResponseMetadata.from_response(response, method, path)
+                self._on_response(metadata)
+            except Exception as exc:  # noqa: BLE001 - observability must not break requests
+                if self._logger is not None:
+                    self._logger.warning(
+                        "on_response callback raised an exception: %s", exc
+                    )
 
         return self._parse_response(response, path)
 

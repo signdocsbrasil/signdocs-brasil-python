@@ -47,7 +47,7 @@ class TestHttpClient:
         client.request("GET", "/v1/test")
 
         req = responses.calls[0].request
-        assert "signdocs-brasil-python/1.0.0" in req.headers["User-Agent"]
+        assert "signdocs-brasil-python/1.3.0" in req.headers["User-Agent"]
 
     @responses.activate
     def test_no_auth_skips_authorization(self):

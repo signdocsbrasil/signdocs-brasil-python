@@ -54,7 +54,10 @@ class WebhooksResource:
             List of Webhook objects.
         """
         data = self._http.request("GET", "/v1/webhooks", timeout=timeout)
-        return [Webhook.from_dict(w) for w in data]
+        # API returns {"webhooks": [...], "count": N}; accept a bare list
+        # defensively for test fixtures that don't wrap.
+        items = data.get("webhooks", []) if isinstance(data, dict) else (data or [])
+        return [Webhook.from_dict(w) for w in items]
 
     def delete(self, webhook_id: str, *, timeout: int | None = None) -> None:
         """Delete a webhook registration.

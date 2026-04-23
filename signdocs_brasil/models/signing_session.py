@@ -127,6 +127,32 @@ class ReferenceImageRequest:
 
 
 @dataclass
+class Owner:
+    """Identity of the requester creating a signing session or envelope,
+    distinct from the signer. When provided, SignDocs automatically:
+
+    1. Emails each signer an invitation with their signing URL — when
+       ``signer.email`` differs from ``owner.email`` (case-insensitive).
+    2. Emails the owner a completion notification per signer completion
+       (and a final "all signed" message for envelopes).
+
+    Omit to keep the traditional behavior: the caller delivers signing
+    URLs via their own channels and uses webhooks for completion state.
+    """
+
+    email: str | None = None
+    name: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {}
+        if self.email is not None:
+            d["email"] = self.email
+        if self.name is not None:
+            d["name"] = self.name
+        return d
+
+
+@dataclass
 class CreateSigningSessionRequest:
     """Request to create a new signing session."""
 
@@ -142,6 +168,7 @@ class CreateSigningSessionRequest:
     expires_in_minutes: int | None = None
     appearance: AppearanceRequest | None = None
     reference_image: ReferenceImageRequest | None = None
+    owner: Owner | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {
@@ -167,6 +194,10 @@ class CreateSigningSessionRequest:
             d["appearance"] = self.appearance.to_dict()
         if self.reference_image is not None:
             d["referenceImage"] = self.reference_image.to_dict()
+        if self.owner is not None:
+            owner_dict = self.owner.to_dict()
+            if owner_dict:
+                d["owner"] = owner_dict
         return d
 
 
@@ -181,6 +212,7 @@ class SigningSession:
     client_secret: str
     expires_at: str
     created_at: str
+    invite_sent: bool | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> SigningSession:
@@ -192,6 +224,7 @@ class SigningSession:
             client_secret=data["clientSecret"],
             expires_at=data["expiresAt"],
             created_at=data["createdAt"],
+            invite_sent=data.get("inviteSent"),
         )
 
 

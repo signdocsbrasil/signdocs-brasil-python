@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-04-23
+
+### Added
+
+- `Owner` dataclass — optional requester identity (`email`, `name`) on `CreateSigningSessionRequest` and `CreateEnvelopeRequest`. When provided, SignDocs automatically emails each signer an invitation with their signing URL (when `signer.email` differs from `owner.email`, case-insensitive) and emails the owner a completion notification per signer completion (plus a final "all signed" message for envelopes). Omit `owner` to keep the traditional behavior.
+- `invite_sent` field on `SigningSession` and `EnvelopeSession` response models. Populated by the API when an invitation email was dispatched.
+
+### Changed
+
+- `User-Agent` bumped to `signdocs-brasil-python/1.4.0`.
+
 ## [1.3.0] - 2026-04-20
 
 ### Fixed

@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from .signing_session import Owner
+
 
 @dataclass
 class CreateEnvelopeRequest:
@@ -18,6 +20,7 @@ class CreateEnvelopeRequest:
     metadata: dict[str, str] | None = None
     locale: str | None = None
     expires_in_minutes: int | None = None
+    owner: Owner | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {
@@ -37,6 +40,10 @@ class CreateEnvelopeRequest:
             d["locale"] = self.locale
         if self.expires_in_minutes is not None:
             d["expiresInMinutes"] = self.expires_in_minutes
+        if self.owner is not None:
+            owner_dict = self.owner.to_dict()
+            if owner_dict:
+                d["owner"] = owner_dict
         return d
 
 
@@ -125,6 +132,7 @@ class EnvelopeSession:
     url: str
     client_secret: str
     expires_at: str
+    invite_sent: bool | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> EnvelopeSession:
@@ -136,6 +144,7 @@ class EnvelopeSession:
             url=data["url"],
             client_secret=data["clientSecret"],
             expires_at=data["expiresAt"],
+            invite_sent=data.get("inviteSent"),
         )
 
 

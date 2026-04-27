@@ -119,17 +119,55 @@ class WebhookPayload:
 
 
 @dataclass
-class WebhookTestResponse:
-    """Response from testing a webhook delivery."""
+class WebhookTestDelivery:
+    """Result of a synchronous test delivery to the webhook endpoint."""
 
-    delivery_id: str
-    status: str
-    status_code: int | None = None
+    http_status: int
+    success: bool
+    timestamp: str
+    error: str | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> WebhookTestDelivery:
+        return cls(
+            http_status=data["httpStatus"],
+            success=data["success"],
+            timestamp=data["timestamp"],
+            error=data.get("error"),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        out: dict[str, Any] = {
+            "httpStatus": self.http_status,
+            "success": self.success,
+            "timestamp": self.timestamp,
+        }
+        if self.error is not None:
+            out["error"] = self.error
+        return out
+
+
+@dataclass
+class WebhookTestResponse:
+    """Response from POST /v1/webhooks/{id}/test.
+
+    The API returns the webhook identifier alongside the synchronous
+    delivery attempt result (HTTP status code, success flag, optional
+    error message, and dispatch timestamp).
+    """
+
+    webhook_id: str
+    test_delivery: WebhookTestDelivery
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> WebhookTestResponse:
         return cls(
-            delivery_id=data["deliveryId"],
-            status=data["status"],
-            status_code=data.get("statusCode"),
+            webhook_id=data["webhookId"],
+            test_delivery=WebhookTestDelivery.from_dict(data["testDelivery"]),
         )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "webhookId": self.webhook_id,
+            "testDelivery": self.test_delivery.to_dict(),
+        }

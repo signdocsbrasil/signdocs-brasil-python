@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-04-27
+
+### Fixed
+
+- `WebhookTestResponse` shape now matches the API spec. Previously the model
+  declared `{delivery_id, status, status_code}` reading from
+  `data["deliveryId"]`/`["status"]`/`["statusCode"]`, but
+  `POST /v1/webhooks/{id}/test` actually returns
+  `{webhookId, testDelivery: {httpStatus, success, error?, timestamp}}`. The
+  typed wrapper was returning all-empty fields against the live HML API.
+  `WebhookTestResponse` is now `{webhook_id, test_delivery}` where
+  `test_delivery` is a new `WebhookTestDelivery` dataclass with
+  `http_status`, `success`, `timestamp`, and optional `error`. Both classes
+  serialize to and deserialize from the camelCase API field names but expose
+  Python snake_case attributes.
+
+### Changed
+
+- `User-Agent` bumped to `signdocs-brasil-python/1.4.1`.
+
 ## [1.4.0] - 2026-04-23
 
 ### Added

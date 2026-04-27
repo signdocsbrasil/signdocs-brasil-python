@@ -87,6 +87,7 @@ from .webhook import (
     Webhook,
     WebhookEventType,
     WebhookPayload,
+    WebhookTestDelivery,
     WebhookTestResponse,
 )
 
@@ -149,6 +150,7 @@ __all__ = [
     "RegisterWebhookResponse",
     "Webhook",
     "WebhookPayload",
+    "WebhookTestDelivery",
     "WebhookTestResponse",
     # Evidence
     "EvidenceSigner",

@@ -334,15 +334,43 @@ class TestWebhooksResource:
     def test_test_webhook(self):
         http = mock_http()
         http.request.return_value = {
-            "deliveryId": "dlv_1",
-            "status": "delivered",
-            "statusCode": 200,
+            "webhookId": "wh_1",
+            "testDelivery": {
+                "httpStatus": 200,
+                "success": True,
+                "timestamp": "2026-04-27T01:23:28.323Z",
+            },
         }
         webhooks = WebhooksResource(http)
 
-        webhooks.test("wh_1")
+        result = webhooks.test("wh_1")
 
         http.request.assert_called_once_with("POST", "/v1/webhooks/wh_1/test", timeout=None)
+        assert result.webhook_id == "wh_1"
+        assert result.test_delivery.http_status == 200
+        assert result.test_delivery.success is True
+        assert result.test_delivery.timestamp == "2026-04-27T01:23:28.323Z"
+        assert result.test_delivery.error is None
+
+    def test_test_webhook_with_error(self):
+        http = mock_http()
+        http.request.return_value = {
+            "webhookId": "wh_1",
+            "testDelivery": {
+                "httpStatus": 502,
+                "success": False,
+                "error": "Bad Gateway",
+                "timestamp": "2026-04-27T01:23:28.323Z",
+            },
+        }
+        webhooks = WebhooksResource(http)
+
+        result = webhooks.test("wh_1")
+
+        assert result.webhook_id == "wh_1"
+        assert result.test_delivery.http_status == 502
+        assert result.test_delivery.success is False
+        assert result.test_delivery.error == "Bad Gateway"
 
 
 class TestStepsResource:

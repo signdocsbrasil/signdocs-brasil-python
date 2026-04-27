@@ -5,6 +5,7 @@ from pathlib import Path
 
 from signdocs_brasil.errors import ProblemDetail
 from signdocs_brasil.models.evidence import Evidence
+from signdocs_brasil.models.webhook import WebhookTestDelivery, WebhookTestResponse
 from signdocs_brasil.models.transaction import (
     Transaction,
     TransactionListResponse,
@@ -121,3 +122,44 @@ class TestEvidenceDeserialization:
         assert ev.document is not None
         assert ev.document.hash is not None
         assert ev.document.filename == "contract.pdf"
+
+
+class TestWebhookTestResponseDeserialization:
+    def test_round_trip_minimal(self):
+        payload = {
+            "webhookId": "wh_abc",
+            "testDelivery": {
+                "httpStatus": 200,
+                "success": True,
+                "timestamp": "2026-04-27T01:23:28.323Z",
+            },
+        }
+
+        resp = WebhookTestResponse.from_dict(payload)
+
+        assert resp.webhook_id == "wh_abc"
+        assert isinstance(resp.test_delivery, WebhookTestDelivery)
+        assert resp.test_delivery.http_status == 200
+        assert resp.test_delivery.success is True
+        assert resp.test_delivery.timestamp == "2026-04-27T01:23:28.323Z"
+        assert resp.test_delivery.error is None
+
+        # Round-trip back to camelCase API shape.
+        assert resp.to_dict() == payload
+
+    def test_round_trip_with_error(self):
+        payload = {
+            "webhookId": "wh_xyz",
+            "testDelivery": {
+                "httpStatus": 502,
+                "success": False,
+                "error": "Bad Gateway",
+                "timestamp": "2026-04-27T01:23:28.323Z",
+            },
+        }
+
+        resp = WebhookTestResponse.from_dict(payload)
+
+        assert resp.test_delivery.success is False
+        assert resp.test_delivery.error == "Bad Gateway"
+        assert resp.to_dict() == payload

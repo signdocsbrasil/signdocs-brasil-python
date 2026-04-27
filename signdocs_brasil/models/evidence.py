@@ -122,6 +122,7 @@ class VerificationResponse:
     created_at: str
     completed_at: str | None = None
     tenant_cnpj: str | None = None
+    envelope_id: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> VerificationResponse:
@@ -139,6 +140,7 @@ class VerificationResponse:
             created_at=data["createdAt"],
             completed_at=data.get("completedAt"),
             tenant_cnpj=data.get("tenantCnpj"),
+            envelope_id=data.get("envelopeId"),
         )
 
 

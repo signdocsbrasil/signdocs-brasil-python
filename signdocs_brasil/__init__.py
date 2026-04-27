@@ -60,7 +60,7 @@ from .response_metadata import ResponseMetadata
 from .token_cache import CachedToken, InMemoryTokenCache, TokenCache
 from .webhook_verifier import verify_webhook_signature
 
-__version__ = "1.4.1"
+__version__ = "1.5.0"
 
 __all__ = [
     # Client

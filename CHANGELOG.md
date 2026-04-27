@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-04-27
+
+### Added
+
+- `envelope_id: str | None` on `VerificationResponse` — populated when the
+  verified evidence belongs to a multi-signer envelope. Use it to drill
+  back up to the envelope via
+  `client.verification.verify_envelope(envelope_id)`. Omitted for
+  standalone signing-session evidences.
+- Three new webhook event types on `WebhookEventType`:
+  - `ENVELOPE.CREATED` — emitted when a multi-signer envelope is created.
+  - `ENVELOPE.ALL_SIGNED` — emitted when every signer has completed.
+  - `ENVELOPE.EXPIRED` — emitted when an envelope expires with one or
+    more pending signatures.
+
+### Changed
+
+- `User-Agent` bumped to `signdocs-brasil-python/1.5.0`.
+
 ## [1.4.1] - 2026-04-27
 
 ### Fixed

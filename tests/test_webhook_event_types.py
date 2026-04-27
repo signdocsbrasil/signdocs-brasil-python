@@ -31,13 +31,16 @@ CANONICAL_EVENTS: frozenset[str] = frozenset(
         "SIGNING_SESSION.COMPLETED",
         "SIGNING_SESSION.CANCELLED",
         "SIGNING_SESSION.EXPIRED",
+        "ENVELOPE.CREATED",
+        "ENVELOPE.ALL_SIGNED",
+        "ENVELOPE.EXPIRED",
     }
 )
 
 
 class TestWebhookEventTypeLockstep:
-    def test_exactly_17_events(self):
-        assert len(CANONICAL_EVENTS) == 17
+    def test_exactly_20_events(self):
+        assert len(CANONICAL_EVENTS) == 20
 
     def test_literal_contains_all_canonical_events(self):
         literal_values = frozenset(get_args(WebhookEventType))

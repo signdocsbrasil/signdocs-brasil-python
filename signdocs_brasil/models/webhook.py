@@ -23,6 +23,9 @@ WebhookEventType = Literal[
     "SIGNING_SESSION.COMPLETED",
     "SIGNING_SESSION.CANCELLED",
     "SIGNING_SESSION.EXPIRED",
+    "ENVELOPE.CREATED",
+    "ENVELOPE.ALL_SIGNED",
+    "ENVELOPE.EXPIRED",
 ]
 
 #: Webhook events that are part of the NT65 INSS consignado flow. Events

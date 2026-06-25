@@ -17,7 +17,22 @@ class SignerRequest:
     cpf: str | None = None
     cnpj: str | None = None
     otp_channel: Literal["email", "sms"] | None = None
+    otp_channel_selectable: bool | None = None
     birth_date: str | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> SignerRequest:
+        return cls(
+            name=data["name"],
+            user_external_id=data["userExternalId"],
+            email=data.get("email"),
+            phone=data.get("phone"),
+            cpf=data.get("cpf"),
+            cnpj=data.get("cnpj"),
+            otp_channel=data.get("otpChannel"),
+            otp_channel_selectable=data.get("otpChannelSelectable"),
+            birth_date=data.get("birthDate"),
+        )
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {"name": self.name, "userExternalId": self.user_external_id}
@@ -31,6 +46,8 @@ class SignerRequest:
             d["cnpj"] = self.cnpj
         if self.otp_channel is not None:
             d["otpChannel"] = self.otp_channel
+        if self.otp_channel_selectable is not None:
+            d["otpChannelSelectable"] = self.otp_channel_selectable
         if self.birth_date is not None:
             d["birthDate"] = self.birth_date
         return d
@@ -351,6 +368,7 @@ class AdvanceSessionRequest:
         "complete_signing",
     ]
     otp_code: str | None = None
+    otp_channel: Literal["email", "sms"] | None = None
     liveness_session_id: str | None = None
     certificate_chain_pems: list[str] | None = None
     signature_request_id: str | None = None
@@ -361,6 +379,8 @@ class AdvanceSessionRequest:
         d: dict[str, Any] = {"action": self.action}
         if self.otp_code is not None:
             d["otpCode"] = self.otp_code
+        if self.otp_channel is not None:
+            d["otpChannel"] = self.otp_channel
         if self.liveness_session_id is not None:
             d["livenessSessionId"] = self.liveness_session_id
         if self.certificate_chain_pems is not None:
@@ -371,6 +391,19 @@ class AdvanceSessionRequest:
             d["rawSignatureBase64"] = self.raw_signature_base64
         if self.geolocation is not None:
             d["geolocation"] = self.geolocation.to_dict()
+        return d
+
+
+@dataclass
+class ResendOtpRequest:
+    """Request to resend the OTP challenge, optionally on a chosen channel."""
+
+    channel: Literal["email", "sms"] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {}
+        if self.channel is not None:
+            d["channel"] = self.channel
         return d
 
 
@@ -457,6 +490,8 @@ class BootstrapSigner:
     name: str
     masked_email: str | None = None
     masked_cpf: str | None = None
+    otp_channel_selectable: bool | None = None
+    available_otp_channels: list[Literal["email", "sms"]] | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> BootstrapSigner:
@@ -464,6 +499,8 @@ class BootstrapSigner:
             name=data["name"],
             masked_email=data.get("maskedEmail"),
             masked_cpf=data.get("maskedCpf"),
+            otp_channel_selectable=data.get("otpChannelSelectable"),
+            available_otp_channels=data.get("availableOtpChannels"),
         )
 
 

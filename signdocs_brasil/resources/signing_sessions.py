@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from ..models.signing_session import (
     AdvanceSessionRequest,
@@ -12,6 +12,7 @@ from ..models.signing_session import (
     CreateSigningSessionRequest,
     ListSigningSessionsParams,
     ListSigningSessionsResponse,
+    ResendOtpRequest,
     SigningSession,
     SigningSessionBootstrap,
     SigningSessionStatus,
@@ -187,20 +188,25 @@ class SigningSessionsResource:
         self,
         session_id: str,
         *,
+        channel: Literal["email", "sms"] | None = None,
         timeout: int | None = None,
     ) -> AdvanceSessionResponse:
         """Resend the OTP challenge for a signing session.
 
         Args:
             session_id: The session ID.
+            channel: Optional delivery channel for the resent OTP ("email" or "sms").
+                When omitted, the API uses the signer's configured channel.
             timeout: Per-request timeout in milliseconds.
 
         Returns:
             AdvanceSessionResponse with updated step info.
         """
+        body = ResendOtpRequest(channel=channel).to_dict() if channel is not None else None
         data = self._http.request(
             "POST",
             f"/v1/signing-sessions/{session_id}/resend-otp",
+            body=body,
             timeout=timeout,
         )
         return AdvanceSessionResponse.from_dict(data)

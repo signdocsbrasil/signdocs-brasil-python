@@ -634,6 +634,42 @@ class TestVerificationResource:
         assert result.downloads.consolidated_signature.filename == "signature.p7s"
         assert result.downloads.combined_signed_pdf is None
 
+    def test_verify_document_authenticated(self):
+        http = mock_http()
+        http.request.return_value = {
+            "signed": True,
+            "signatureCount": 1,
+            "signatures": [
+                {
+                    "method": "pdf_acroform",
+                    "type": "pkcs7",
+                    "subFilter": "adbe.pkcs7.detached",
+                    "filter": "Adobe.PPKLite",
+                    "confidence": 1.0,
+                },
+            ],
+            "checkedAt": "2026-06-25T00:00:00.000Z",
+        }
+        verification = VerificationResource(http)
+        req = MagicMock()
+        req.to_dict.return_value = {"content": "base64pdf", "filename": "contrato.pdf"}
+
+        result = verification.verify_document(req)
+
+        http.request.assert_called_once_with(
+            "POST", "/v1/verify/document",
+            body={"content": "base64pdf", "filename": "contrato.pdf"}, timeout=None,
+        )
+        assert result.signed is True
+        assert result.signature_count == 1
+        assert len(result.signatures) == 1
+        assert result.signatures[0].method == "pdf_acroform"
+        assert result.signatures[0].type == "pkcs7"
+        assert result.signatures[0].sub_filter == "adbe.pkcs7.detached"
+        assert result.signatures[0].filter == "Adobe.PPKLite"
+        assert result.signatures[0].confidence == 1.0
+        assert result.checked_at == "2026-06-25T00:00:00.000Z"
+
 
 class TestUsersResource:
     def test_enroll_put(self):

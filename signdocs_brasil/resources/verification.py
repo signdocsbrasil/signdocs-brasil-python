@@ -8,6 +8,8 @@ from ..models.evidence import (
     EnvelopeVerificationResponse,
     VerificationDownloadsResponse,
     VerificationResponse,
+    VerifyDocumentRequest,
+    VerifyDocumentResponse,
 )
 
 if TYPE_CHECKING:
@@ -15,7 +17,13 @@ if TYPE_CHECKING:
 
 
 class VerificationResource:
-    """Public verification operations (no authentication required)."""
+    """Verification operations.
+
+    Most methods (``verify``, ``downloads``, ``verify_envelope``) are public
+    and require no authentication. ``verify_document`` is the exception: it is
+    authenticated and requires production credentials with the
+    ``verification:write`` scope.
+    """
 
     def __init__(self, http: HttpClient) -> None:
         self._http = http
@@ -92,3 +100,34 @@ class VerificationResource:
             timeout=timeout,
         )
         return EnvelopeVerificationResponse.from_dict(data)
+
+    def verify_document(
+        self,
+        request: VerifyDocumentRequest,
+        *,
+        timeout: int | None = None,
+    ) -> VerifyDocumentResponse:
+        """Detect whether a PDF already carries signatures.
+
+        Unlike the other verification methods, this endpoint is
+        **authenticated**: it requires a Bearer token with the
+        ``verification:write`` scope and runs only against
+        **production credentials** (the SDK calls it regardless, but the
+        API rejects non-production tenants).
+
+        Args:
+            request: The document to verify (base64-encoded PDF + optional
+                filename).
+            timeout: Per-request timeout in milliseconds.
+
+        Returns:
+            VerifyDocumentResponse describing whether the PDF is signed and
+            the signatures detected.
+        """
+        data = self._http.request(
+            "POST",
+            "/v1/verify/document",
+            body=request.to_dict(),
+            timeout=timeout,
+        )
+        return VerifyDocumentResponse.from_dict(data)

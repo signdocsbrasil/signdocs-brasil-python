@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-06-25
+
+### Added
+
+- `client.verification.verify_document(request)` — detects whether a PDF
+  already carries signatures via `POST /v1/verify/document`. Unlike the other
+  verification methods, this endpoint is **authenticated**: it requires a
+  Bearer token with the `verification:write` scope and runs only against
+  **production credentials**.
+- New models backing the endpoint:
+  - `VerifyDocumentRequest` — `{content, filename?}` where `content` is the
+    base64-encoded PDF.
+  - `VerifyDocumentResponse` — `{signed, signature_count, signatures,
+    checked_at}`.
+  - `DetectedSignature` — `{method, type, confidence, sub_filter?, filter?}`
+    where `type` is one of `"pades"`, `"pkcs7"`, `"legacy"`, or
+    `"digital_certificate"`.
+
 ## [1.5.0] - 2026-04-27
 
 ### Added

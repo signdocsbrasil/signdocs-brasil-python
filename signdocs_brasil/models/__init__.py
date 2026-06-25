@@ -19,6 +19,7 @@ from .envelope import (
     EnvelopeSessionSummary,
 )
 from .evidence import (
+    DetectedSignature,
     EnvelopeVerificationDownloads,
     EnvelopeVerificationResponse,
     EnvelopeVerificationSigner,
@@ -31,6 +32,8 @@ from .evidence import (
     VerificationDownloadsResponse,
     VerificationResponse,
     VerificationSigner,
+    VerifyDocumentRequest,
+    VerifyDocumentResponse,
 )
 from .health import HealthCheckResponse, HealthHistoryResponse, ServiceHealth
 from .signing import (
@@ -165,6 +168,9 @@ __all__ = [
     "EnvelopeVerificationSigner",
     "EnvelopeVerificationDownloads",
     "EnvelopeVerificationResponse",
+    "VerifyDocumentRequest",
+    "DetectedSignature",
+    "VerifyDocumentResponse",
     # User
     "EnrollUserRequest",
     "EnrollUserResponse",

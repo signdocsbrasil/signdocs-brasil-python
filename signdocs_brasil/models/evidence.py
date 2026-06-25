@@ -91,6 +91,77 @@ class Evidence:
 
 
 @dataclass
+class VerifyDocumentRequest:
+    """Request to verify whether a PDF already carries signatures.
+
+    Attributes:
+        content: Base64-encoded PDF bytes (required).
+        filename: Optional original filename, used only for diagnostics.
+    """
+
+    content: str
+    filename: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {"content": self.content}
+        if self.filename is not None:
+            result["filename"] = self.filename
+        return result
+
+
+@dataclass
+class DetectedSignature:
+    """A single signature detected inside a verified PDF.
+
+    Attributes:
+        method: High-level detection method reported by the API.
+        type: Signature type. One of ``"pades"``, ``"pkcs7"``, ``"legacy"``,
+            or ``"digital_certificate"``.
+        confidence: Detection confidence in the ``[0.0, 1.0]`` range.
+        sub_filter: PDF signature ``/SubFilter`` value, when available
+            (e.g. ``"adbe.pkcs7.detached"``).
+        filter: PDF signature ``/Filter`` value, when available.
+    """
+
+    method: str
+    type: str
+    confidence: float
+    sub_filter: str | None = None
+    filter: str | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> DetectedSignature:
+        return cls(
+            method=data["method"],
+            type=data["type"],
+            confidence=float(data["confidence"]),
+            sub_filter=data.get("subFilter"),
+            filter=data.get("filter"),
+        )
+
+
+@dataclass
+class VerifyDocumentResponse:
+    """Response from verifying whether a PDF is already signed."""
+
+    signed: bool
+    signature_count: int
+    signatures: list[DetectedSignature]
+    checked_at: str
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> VerifyDocumentResponse:
+        return cls(
+            signed=bool(data["signed"]),
+            signature_count=int(data["signatureCount"]),
+            signatures=[
+                DetectedSignature.from_dict(s) for s in data.get("signatures", [])
+            ],
+            checked_at=data["checkedAt"],
+        )
+
+
+@dataclass
 class VerificationSigner:
     """Signer information within a verification response."""
 

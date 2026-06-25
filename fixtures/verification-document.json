@@ -1,0 +1,32 @@
+{
+  "description": "Verify a PDF document for existing signatures (authenticated, requires verification:write scope + production credentials)",
+  "input": {
+    "content": "JVBERi0xLjQK...",
+    "filename": "contrato.pdf"
+  },
+  "expected_request": {
+    "method": "POST",
+    "path": "/v1/verify/document",
+    "body": {
+      "content": "JVBERi0xLjQK...",
+      "filename": "contrato.pdf"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "signed": true,
+      "signatureCount": 1,
+      "signatures": [
+        {
+          "method": "pdf_acroform",
+          "type": "pkcs7",
+          "subFilter": "adbe.pkcs7.detached",
+          "filter": "Adobe.PPKLite",
+          "confidence": 1.0
+        }
+      ],
+      "checkedAt": "2026-06-25T00:00:00.000Z"
+    }
+  }
+}

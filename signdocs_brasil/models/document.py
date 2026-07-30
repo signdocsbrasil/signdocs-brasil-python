@@ -111,7 +111,21 @@ class DownloadResponse:
     expires_in: int
     document_hash: str | None = None
     original_url: str | None = None
+    #: Signed/stamped document. Present for PDF transactions
+    #: (``document_format == "pdf"``), where the signature is embedded.
     signed_url: str | None = None
+    #: Detached CAdES signature (``.p7s``). Returned instead of ``signed_url``
+    #: for non-PDF transactions (``document_format == "generic"``), which cannot
+    #: carry an embedded signature.
+    #:
+    #: Caveat: the API presigns this key without checking that the object
+    #: exists, so a non-PDF signed under a click/OTP policy still returns a URL
+    #: here — one that 404s, because only the digital-certificate step writes a
+    #: ``.p7s``. Branch on the signing policy, not on this field being set.
+    signature_url: str | None = None
+    #: ``"pdf"`` or ``"generic"``, derived by the API from the uploaded bytes
+    #: rather than the filename.
+    document_format: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> DownloadResponse:
@@ -121,4 +135,6 @@ class DownloadResponse:
             document_hash=data.get("documentHash"),
             original_url=data.get("originalUrl"),
             signed_url=data.get("signedUrl"),
+            signature_url=data.get("signatureUrl"),
+            document_format=data.get("documentFormat"),
         )

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from .signing_session import Owner
@@ -221,4 +221,34 @@ class CombinedStampResponse:
             download_url=data["downloadUrl"],
             expires_in=data["expiresIn"],
             signer_count=data["signerCount"],
+        )
+
+
+@dataclass
+class CancelEnvelopeResponse:
+    """Result of cancelling an entire envelope.
+
+    ``preserved_signed_count`` reports signatures already collected, which are
+    left untouched — cancelling stops the pending signers, it never invalidates
+    evidence already gathered. ``already_cancelled`` is set when the envelope
+    was already CANCELLED, in which case ``cancelled_count`` is 0; the endpoint
+    is idempotent, so re-cancelling is a safe no-op.
+    """
+
+    envelope_id: str
+    status: str
+    cancelled_count: int = 0
+    preserved_signed_count: int = 0
+    cancelled_sessions: list[dict[str, Any]] = field(default_factory=list)
+    already_cancelled: bool = False
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> CancelEnvelopeResponse:
+        return cls(
+            envelope_id=data["envelopeId"],
+            status=data.get("status", ""),
+            cancelled_count=data.get("cancelledCount", 0),
+            preserved_signed_count=data.get("preservedSignedCount", 0),
+            cancelled_sessions=data.get("cancelledSessions", []),
+            already_cancelled=data.get("alreadyCancelled", False),
         )

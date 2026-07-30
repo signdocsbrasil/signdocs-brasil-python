@@ -12,6 +12,7 @@ from .document import (
 from .document_group import CombinedStampResponse
 from .envelope import (
     AddEnvelopeSessionRequest,
+    CancelEnvelopeResponse,
     CreateEnvelopeRequest,
     Envelope,
     EnvelopeDetail,
@@ -179,6 +180,7 @@ __all__ = [
     "HealthCheckResponse",
     "HealthHistoryResponse",
     # Document Group
+    "CancelEnvelopeResponse",
     "CombinedStampResponse",
     # Envelope
     "CreateEnvelopeRequest",

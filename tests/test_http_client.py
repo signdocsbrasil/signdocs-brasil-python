@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 import responses
 
+import signdocs_brasil
 from signdocs_brasil._auth import AuthHandler
 from signdocs_brasil._http_client import HttpClient
 from signdocs_brasil.errors import (
@@ -39,6 +40,24 @@ class TestHttpClient:
         req = responses.calls[0].request
         assert req.headers["Authorization"] == "Bearer test-token"
 
+    def test_version_constants_match_pyproject(self):
+        """pyproject.toml, __version__ and _SDK_VERSION are three separate
+        sources for one number. They drifted three releases apart — the package
+        shipped 1.9.0 while every request reported 1.8.0 — because nothing
+        compared them."""
+        import tomllib
+        from pathlib import Path
+
+        from signdocs_brasil._http_client import _SDK_VERSION
+
+        pyproject = tomllib.loads(
+            (Path(__file__).parent.parent / "pyproject.toml").read_text()
+        )
+        declared = pyproject["project"]["version"]
+
+        assert signdocs_brasil.__version__ == declared
+        assert _SDK_VERSION == declared
+
     @responses.activate
     def test_user_agent_header(self):
         responses.get(f"{BASE_URL}/v1/test", json={"ok": True}, status=200)
@@ -47,7 +66,10 @@ class TestHttpClient:
         client.request("GET", "/v1/test")
 
         req = responses.calls[0].request
-        assert "signdocs-brasil-python/1.8.0" in req.headers["User-Agent"]
+        assert (
+            f"signdocs-brasil-python/{signdocs_brasil.__version__}"
+            in req.headers["User-Agent"]
+        )
 
     @responses.activate
     def test_no_auth_skips_authorization(self):

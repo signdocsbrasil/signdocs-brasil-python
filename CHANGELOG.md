@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2026-08-20
+
+### Added
+
+- **`signing_sessions.link(session_id)`** — `POST /v1/signing-sessions/{sessionId}/link`. The endpoint has
+  been in the API and documented in the OpenAPI spec all along, but no SDK in any
+  language exposed it, so there was no supported way to recover a signing link
+  once the create response was gone.
+  - A signing link is single-use: after the signer finishes — or the embed token
+    is otherwise consumed — reopening the same URL returns
+    `401 Embed token has been consumed`. This mints a new one **without creating
+    another transaction and without consuming quota**.
+  - Works for standalone and envelope sessions alike.
+  - The session must be `ACTIVE`. A completed or cancelled one returns 409: a
+    link to a finished session would authenticate nothing. Reach the signed
+    document through the envelope's combined stamp or the transaction download
+    instead.
+  - `expiresAt` is inherited from the original session and is **not** extended.
+  - Sends no idempotency key, deliberately. A retry must mint a fresh URL, not
+    replay one that has already been consumed.
+  - **Authorises the tenant, not the end user.** The API cannot tell which of
+    your users is entitled to a given link, so an application whose users share
+    one tenant has to establish that itself before calling — otherwise this is a
+    way for one user to obtain another's signing credential.
+- `MintSigningLinkResponse` model (`session_id`, `transaction_id`, `url`, `expires_at`, `expires_in`).
+
+### Fixed
+
+- **The `User-Agent` reported a version nobody was running.** 1.9.0 shipped reporting `signdocs-brasil-python/1.8.0`, and `__version__` said 1.8.0 while `pyproject.toml` said 1.9.0 — three sources for one number, none compared. The version
+  constant now moves with the package, and a test compares it against
+  `pyproject.toml` so a release that forgets it fails instead of shipping.
+
 ## [1.9.0] - 2026-08-20
 
 ### Changed

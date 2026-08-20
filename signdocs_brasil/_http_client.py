@@ -18,7 +18,7 @@ from .errors import (
 )
 from .response_metadata import ResponseMetadata
 
-_SDK_VERSION = "1.8.0"
+_SDK_VERSION = "1.10.0"
 _USER_AGENT = f"signdocs-brasil-python/{_SDK_VERSION}"
 
 

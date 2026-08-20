@@ -62,7 +62,7 @@ client = SignDocsBrasilClient(ClientConfig(
 | `client.verification` | `verify`, `downloads` |
 | `client.users` | `enroll` |
 | `client.webhooks` | `register`, `list`, `delete`, `test` |
-| `client.signing_sessions` | `create`, `get_status`, `cancel`, `list`, `wait_for_completion` |
+| `client.signing_sessions` | `create`, `get_status`, `cancel`, `link`, `list`, `wait_for_completion` |
 | `client.envelopes` | `create`, `get`, `add_session`, `combined_stamp` |
 | `client.document_groups` | `combined_stamp` |
 | `client.health` | `check`, `history` |

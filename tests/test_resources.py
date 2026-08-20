@@ -18,6 +18,7 @@ from signdocs_brasil.resources.envelopes import EnvelopesResource
 from signdocs_brasil.resources.evidence import EvidenceResource
 from signdocs_brasil.resources.health import HealthResource
 from signdocs_brasil.resources.signing import SigningResource
+from signdocs_brasil.resources.signing_sessions import SigningSessionsResource
 from signdocs_brasil.resources.steps import StepsResource
 from signdocs_brasil.resources.transactions import TransactionsResource
 from signdocs_brasil.resources.users import UsersResource
@@ -487,6 +488,49 @@ class TestEvidenceResource:
         http.request.assert_called_once_with(
             "GET", "/v1/transactions/tx_1/evidence", timeout=None,
         )
+
+
+class TestSigningSessionsResource:
+    def test_link_posts_with_no_body_and_no_key(self):
+        """Minting a link is not a metered create. A key would let a retry
+        replay a URL that has already been consumed, instead of issuing the
+        fresh one the caller asked for."""
+        http = mock_http()
+        http.request.return_value = {
+            "sessionId": "ss_1",
+            "transactionId": "tx_1",
+            "url": "https://sign.signdocs.com.br/s/ss_1?cs=abc",
+            "expiresAt": "2026-08-27T12:00:00.000Z",
+            "expiresIn": 3600,
+        }
+        sessions = SigningSessionsResource(http)
+
+        result = sessions.link("ss_1")
+
+        http.request.assert_called_once_with(
+            "POST", "/v1/signing-sessions/ss_1/link", timeout=None,
+        )
+        http.request_with_idempotency.assert_not_called()
+        assert result.url == "https://sign.signdocs.com.br/s/ss_1?cs=abc"
+        assert result.expires_in == 3600
+        assert result.transaction_id == "tx_1"
+
+    def test_link_propagates_conflict_when_session_not_active(self):
+        """A completed session cannot be linked — the API returns 409 and the
+        SDK must surface it rather than hand back something unusable."""
+        http = mock_http()
+        http.request.side_effect = ConflictError(
+            ProblemDetail(
+                type="about:blank",
+                title="Conflict",
+                status=409,
+                detail="Session cannot be linked in status: COMPLETED",
+            )
+        )
+        sessions = SigningSessionsResource(http)
+
+        with pytest.raises(ConflictError):
+            sessions.link("ss_done")
 
 
 class TestEnvelopesResource:

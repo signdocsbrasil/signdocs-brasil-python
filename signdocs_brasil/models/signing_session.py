@@ -286,6 +286,30 @@ class CancelSigningSessionResponse:
 
 
 @dataclass
+class MintSigningLinkResponse:
+    """A freshly minted signing URL for an existing session."""
+
+    session_id: str
+    transaction_id: str
+    #: Single-use signing URL. Treat it as a bearer credential.
+    url: str
+    #: Deadline of the original session — this call does not extend it.
+    expires_at: str
+    #: Seconds remaining until ``expires_at``.
+    expires_in: int
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> MintSigningLinkResponse:
+        return cls(
+            session_id=data["sessionId"],
+            transaction_id=data["transactionId"],
+            url=data["url"],
+            expires_at=data["expiresAt"],
+            expires_in=data["expiresIn"],
+        )
+
+
+@dataclass
 class SigningSessionListItem:
     """A session in a list response."""
 

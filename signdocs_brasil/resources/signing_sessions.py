@@ -12,6 +12,7 @@ from ..models.signing_session import (
     CreateSigningSessionRequest,
     ListSigningSessionsParams,
     ListSigningSessionsResponse,
+    MintSigningLinkResponse,
     ResendOtpRequest,
     SigningSession,
     SigningSessionBootstrap,
@@ -99,6 +100,48 @@ class SigningSessionsResource:
             timeout=timeout,
         )
         return CancelSigningSessionResponse.from_dict(data)
+
+    def link(
+        self,
+        session_id: str,
+        *,
+        timeout: int | None = None,
+    ) -> MintSigningLinkResponse:
+        """Mint a fresh signing URL for an existing session and return it.
+
+        A signing link is **single-use**: once the signer finishes — or the
+        embed token is otherwise consumed — reopening the same URL returns
+        ``401 Embed token has been consumed``. This issues a new one without
+        creating another transaction and **without consuming quota**. Works for
+        standalone and envelope sessions alike.
+
+        ``expires_at`` is inherited from the original session and is not
+        extended by this call.
+
+        **Authorises the tenant, not the end user.** The API cannot tell which
+        of your users is entitled to this link, so an application whose users
+        share one tenant must establish that itself before calling — otherwise
+        this becomes a way for one user to obtain another's signing credential.
+
+        Args:
+            session_id: The session ID. Must be ``ACTIVE``.
+            timeout: Per-request timeout in milliseconds.
+
+        Returns:
+            MintSigningLinkResponse.
+
+        Raises:
+            ConflictError: The session is not ``ACTIVE``. A link to a finished
+                session would authenticate nothing; use
+                ``envelopes.combined_stamp()`` or ``transactions.download()``
+                to reach the signed document instead.
+        """
+        data = self._http.request(
+            "POST",
+            f"/v1/signing-sessions/{session_id}/link",
+            timeout=timeout,
+        )
+        return MintSigningLinkResponse.from_dict(data)
 
     def list(
         self,

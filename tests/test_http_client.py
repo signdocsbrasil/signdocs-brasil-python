@@ -45,15 +45,18 @@ class TestHttpClient:
         sources for one number. They drifted three releases apart — the package
         shipped 1.9.0 while every request reported 1.8.0 — because nothing
         compared them."""
-        import tomllib
+        import re
         from pathlib import Path
 
         from signdocs_brasil._http_client import _SDK_VERSION
 
-        pyproject = tomllib.loads(
-            (Path(__file__).parent.parent / "pyproject.toml").read_text()
-        )
-        declared = pyproject["project"]["version"]
+        # Read with a regex rather than tomllib: this package supports 3.9 and
+        # tomllib is 3.11+. The pattern is anchored to the line start so it
+        # matches [project].version and not python_version / target-version.
+        text = (Path(__file__).parent.parent / "pyproject.toml").read_text()
+        match = re.search(r'^version = "([^"]+)"', text, re.MULTILINE)
+        assert match is not None, "no [project] version in pyproject.toml"
+        declared = match.group(1)
 
         assert signdocs_brasil.__version__ == declared
         assert _SDK_VERSION == declared

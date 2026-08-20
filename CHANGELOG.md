@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **`envelopes.add_session()` and `verification.verify_document()` accept
+  `idempotency_key`** and route through the idempotent request path, matching
+  `envelopes.create()`. Keyword-only, so no existing call breaks.
+
+### Fixed
+
+- **`add_session` retried without an idempotency key.** The client retries
+  `{429, 500, 503}`, and this call sent no key — so a 500 became a second
+  signer, a second quota charge and a second invitation, while `create()` was
+  already keyed. Pass a **distinct key per signer**: the API scopes its cache by
+  key and resolved path, and all signers on an envelope share that path, so one
+  key returns signer 1's response — and clientSecret — for signer 2.
+
+- **`verify_document` charged the verification quota on every retry.** The
+  endpoint is metered and its answer is a pure function of the PDF, so a retry
+  paid twice for an identical result.
+
 ## [1.8.0] - 2026-07-30
 
 ### Added

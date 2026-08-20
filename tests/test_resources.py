@@ -14,6 +14,7 @@ from signdocs_brasil.errors import (
 )
 from signdocs_brasil.resources.document_groups import DocumentGroupsResource
 from signdocs_brasil.resources.documents import DocumentsResource
+from signdocs_brasil.resources.envelopes import EnvelopesResource
 from signdocs_brasil.resources.evidence import EvidenceResource
 from signdocs_brasil.resources.health import HealthResource
 from signdocs_brasil.resources.signing import SigningResource
@@ -488,6 +489,46 @@ class TestEvidenceResource:
         )
 
 
+class TestEnvelopesResource:
+    def test_add_session_sends_idempotency_key(self):
+        """add_session went unkeyed while the client retries 500s for up to 60s,
+        so a retry became a second signer, a second quota charge and a second
+        invitation — and this response carries the only copy of clientSecret."""
+        http = mock_http()
+        http.request_with_idempotency.return_value = {
+            "sessionId": "ss_1", "transactionId": "tx_1", "signerIndex": 1,
+            "status": "ACTIVE", "url": "https://sign/s/ss_1",
+            "clientSecret": "ss_secret_1", "expiresAt": "2026-09-01T00:00:00.000Z",
+        }
+        envelopes = EnvelopesResource(http)
+        req = MagicMock()
+        req.to_dict.return_value = {"signerIndex": 1}
+
+        envelopes.add_session("env_1", req, idempotency_key="idem-signer-1")
+
+        http.request_with_idempotency.assert_called_once_with(
+            "POST", "/v1/envelopes/env_1/sessions",
+            body={"signerIndex": 1}, idempotency_key="idem-signer-1", timeout=None,
+        )
+
+    def test_add_session_defaults_to_generated_key(self):
+        """Omitting the key must still route through the idempotent path; the
+        client mints one, so it stays stable across its own retries."""
+        http = mock_http()
+        http.request_with_idempotency.return_value = {
+            "sessionId": "ss_1", "transactionId": "tx_1", "signerIndex": 1,
+            "status": "ACTIVE", "url": "https://sign/s/ss_1",
+            "clientSecret": "ss_secret_1", "expiresAt": "2026-09-01T00:00:00.000Z",
+        }
+        req = MagicMock()
+        req.to_dict.return_value = {"signerIndex": 1}
+
+        EnvelopesResource(http).add_session("env_1", req)
+
+        assert http.request_with_idempotency.call_count == 1
+        assert http.request.call_count == 0
+
+
 class TestVerificationResource:
     def test_verify_no_auth(self):
         http = mock_http()
@@ -636,7 +677,8 @@ class TestVerificationResource:
 
     def test_verify_document_authenticated(self):
         http = mock_http()
-        http.request.return_value = {
+        # Metered endpoint: the key is what stops a retry paying twice.
+        http.request_with_idempotency.return_value = {
             "signed": True,
             "signatureCount": 1,
             "signatures": [
@@ -656,9 +698,10 @@ class TestVerificationResource:
 
         result = verification.verify_document(req)
 
-        http.request.assert_called_once_with(
+        http.request_with_idempotency.assert_called_once_with(
             "POST", "/v1/verify/document",
-            body={"content": "base64pdf", "filename": "contrato.pdf"}, timeout=None,
+            body={"content": "base64pdf", "filename": "contrato.pdf"},
+            idempotency_key=None, timeout=None,
         )
         assert result.signed is True
         assert result.signature_count == 1

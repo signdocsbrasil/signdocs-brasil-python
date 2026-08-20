@@ -105,6 +105,7 @@ class VerificationResource:
         self,
         request: VerifyDocumentRequest,
         *,
+        idempotency_key: str | None = None,
         timeout: int | None = None,
     ) -> VerifyDocumentResponse:
         """Detect whether a PDF already carries signatures.
@@ -118,16 +119,21 @@ class VerificationResource:
         Args:
             request: The document to verify (base64-encoded PDF + optional
                 filename).
+            idempotency_key: Optional idempotency key; generated when omitted.
+                The endpoint is metered and its answer is a pure function of
+                the PDF, so an unkeyed retry pays the verification quota twice
+                for an identical result.
             timeout: Per-request timeout in milliseconds.
 
         Returns:
             VerifyDocumentResponse describing whether the PDF is signed and
             the signatures detected.
         """
-        data = self._http.request(
+        data = self._http.request_with_idempotency(
             "POST",
             "/v1/verify/document",
             body=request.to_dict(),
+            idempotency_key=idempotency_key,
             timeout=timeout,
         )
         return VerifyDocumentResponse.from_dict(data)

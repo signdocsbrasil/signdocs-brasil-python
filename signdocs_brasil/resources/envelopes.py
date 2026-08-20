@@ -77,22 +77,36 @@ class EnvelopesResource:
         envelope_id: str,
         request: AddEnvelopeSessionRequest,
         *,
+        idempotency_key: str | None = None,
         timeout: int | None = None,
     ) -> EnvelopeSession:
         """Add a signer session to an envelope.
 
+        Idempotent. The key is minted once before the client's internal
+        retries, so it stays stable across them — which matters more here than
+        on most calls: this response carries the only copy of ``clientSecret``,
+        and an unkeyed retry after a 500 creates a second signer, charges the
+        quota again and sends a second invitation.
+
+        Pass a **distinct key per signer**. The API scopes its idempotency
+        cache by key and resolved path, and every signer on an envelope shares
+        that path, so one key across the loop returns signer 1's response — and
+        signer 1's clientSecret — for signer 2.
+
         Args:
             envelope_id: The envelope ID.
             request: Session parameters for the signer.
+            idempotency_key: Optional idempotency key; generated when omitted.
             timeout: Per-request timeout in milliseconds.
 
         Returns:
             EnvelopeSession with session URL and clientSecret.
         """
-        data = self._http.request(
+        data = self._http.request_with_idempotency(
             "POST",
             f"/v1/envelopes/{envelope_id}/sessions",
             body=request.to_dict(),
+            idempotency_key=idempotency_key,
             timeout=timeout,
         )
         return EnvelopeSession.from_dict(data)

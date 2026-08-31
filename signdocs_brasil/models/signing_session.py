@@ -391,10 +391,36 @@ class Geolocation:
 
 
 @dataclass
+class DeviceInfo:
+    """Device characteristics recorded in the evidence alongside geolocation."""
+
+    screen_width: int | None = None
+    screen_height: int | None = None
+    language: str | None = None
+    platform: str | None = None
+    touch_points: int | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {}
+        if self.screen_width is not None:
+            d["screenWidth"] = self.screen_width
+        if self.screen_height is not None:
+            d["screenHeight"] = self.screen_height
+        if self.language is not None:
+            d["language"] = self.language
+        if self.platform is not None:
+            d["platform"] = self.platform
+        if self.touch_points is not None:
+            d["touchPoints"] = self.touch_points
+        return d
+
+
+@dataclass
 class AdvanceSessionRequest:
     """Request to advance a signing session step."""
 
     action: Literal[
+        "confirm_signer",
         "accept",
         "verify_otp",
         "resend_otp",
@@ -402,14 +428,29 @@ class AdvanceSessionRequest:
         "complete_liveness",
         "prepare_signing",
         "complete_signing",
+        "complete_document_photo",
     ]
+    #: CPF or CNPJ the signer types to confirm their identity
+    #: (``confirm_signer``).
+    cpf_cnpj: str | None = None
     otp_code: str | None = None
     otp_channel: Literal["email", "sms"] | None = None
     liveness_session_id: str | None = None
     certificate_chain_pems: list[str] | None = None
     signature_request_id: str | None = None
     raw_signature_base64: str | None = None
+    #: Base64 identity-document photo, max 5MB (``complete_document_photo``).
+    document_image: str | None = None
+    document_type: str | None = None
+    #: Sandbox-only simulated scores, so a rejection can be rehearsed. Read
+    #: only once the step already resolved to sandbox — they can never make a
+    #: real verification pass.
+    sandbox_similarity: float | None = None
+    sandbox_liveness_confidence: float | None = None
+    sandbox_brightness: float | None = None
+    sandbox_sharpness: float | None = None
     geolocation: Geolocation | None = None
+    device_info: DeviceInfo | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {"action": self.action}
@@ -425,8 +466,24 @@ class AdvanceSessionRequest:
             d["signatureRequestId"] = self.signature_request_id
         if self.raw_signature_base64 is not None:
             d["rawSignatureBase64"] = self.raw_signature_base64
+        if self.cpf_cnpj is not None:
+            d["cpfCnpj"] = self.cpf_cnpj
+        if self.document_image is not None:
+            d["documentImage"] = self.document_image
+        if self.document_type is not None:
+            d["documentType"] = self.document_type
+        if self.sandbox_similarity is not None:
+            d["sandboxSimilarity"] = self.sandbox_similarity
+        if self.sandbox_liveness_confidence is not None:
+            d["sandboxLivenessConfidence"] = self.sandbox_liveness_confidence
+        if self.sandbox_brightness is not None:
+            d["sandboxBrightness"] = self.sandbox_brightness
+        if self.sandbox_sharpness is not None:
+            d["sandboxSharpness"] = self.sandbox_sharpness
         if self.geolocation is not None:
             d["geolocation"] = self.geolocation.to_dict()
+        if self.device_info is not None:
+            d["deviceInfo"] = self.device_info.to_dict()
         return d
 
 
@@ -465,10 +522,29 @@ class SandboxData:
     """Sandbox-only data returned in HML environment."""
 
     otp_code: str | None = None
+    #: The biometric step will auto-approve.
+    auto_pass: bool | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> SandboxData:
-        return cls(otp_code=data.get("otpCode"))
+        return cls(otp_code=data.get("otpCode"), auto_pass=data.get("autoPass"))
+
+
+@dataclass
+class AdvanceFallback:
+    """Set when the policy diverted to an alternative step instead of failing."""
+
+    triggered: bool
+    reason: str
+    next_step_type: str | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> AdvanceFallback:
+        return cls(
+            triggered=bool(data.get("triggered")),
+            reason=data.get("reason", ""),
+            next_step_type=data.get("nextStepType"),
+        )
 
 
 @dataclass
@@ -489,6 +565,23 @@ class AdvanceSessionResponse:
     hash_algorithm: str | None = None
     signature_algorithm: str | None = None
     sandbox: SandboxData | None = None
+    #: Why a step was rejected, when the step fails but the *request* does not.
+    #:
+    #: This is the part that matters most in a biometric integration: a
+    #: rejected step comes back **200** with the session still ``ACTIVE`` and
+    #: the reason here, not as an HTTP error. Code that only branches on the
+    #: HTTP status reads a rejection as success.
+    #:
+    #: Emitted today: ``BIOMETRIC_MATCH_FAILED``, ``LIVENESS_NOT_COMPLETED``,
+    #: ``DOCUMENT_QUALITY_LOW``, ``DOCUMENT_MATCH_FAILED`` and the
+    #: ``SERPRO_*`` family.
+    error_code: str | None = None
+    #: pt-BR text addressed to the signer, ready to display.
+    error_detail: str | None = None
+    #: True while the step has attempts left. Once they run out the step goes
+    #: FAILED and this is false — the signal that retrying will not help.
+    retryable: bool | None = None
+    fallback: AdvanceFallback | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> AdvanceSessionResponse:
@@ -501,6 +594,9 @@ class AdvanceSessionResponse:
         sandbox = None
         if data.get("sandbox") is not None:
             sandbox = SandboxData.from_dict(data["sandbox"])
+        fallback = None
+        if data.get("fallback") is not None:
+            fallback = AdvanceFallback.from_dict(data["fallback"])
         return cls(
             session_id=data["sessionId"],
             status=data["status"],
@@ -516,6 +612,10 @@ class AdvanceSessionResponse:
             hash_algorithm=data.get("hashAlgorithm"),
             signature_algorithm=data.get("signatureAlgorithm"),
             sandbox=sandbox,
+            error_code=data.get("errorCode"),
+            error_detail=data.get("errorDetail"),
+            retryable=data.get("retryable"),
+            fallback=fallback,
         )
 
 

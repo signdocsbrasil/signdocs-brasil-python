@@ -208,3 +208,87 @@ class TestPolicyBiometricBars:
             "minSimilarity": 99,
             "minLivenessConfidence": 95,
         }
+
+
+class TestAdvanceSessionSurface:
+    """The advance request/response fields that drive a biometric integration."""
+
+    def test_document_photo_request_serialises(self):
+        from signdocs_brasil.models.signing_session import AdvanceSessionRequest, DeviceInfo
+
+        req = AdvanceSessionRequest(
+            action="complete_document_photo",
+            document_image="AA==",
+            document_type="RG",
+            sandbox_brightness=8,
+            sandbox_sharpness=6,
+            device_info=DeviceInfo(screen_width=390, language="pt-BR"),
+        )
+        assert req.to_dict() == {
+            "action": "complete_document_photo",
+            "documentImage": "AA==",
+            "documentType": "RG",
+            "sandboxBrightness": 8,
+            "sandboxSharpness": 6,
+            "deviceInfo": {"screenWidth": 390, "language": "pt-BR"},
+        }
+
+    def test_confirm_signer_carries_cpf(self):
+        from signdocs_brasil.models.signing_session import AdvanceSessionRequest
+
+        assert AdvanceSessionRequest(
+            action="confirm_signer", cpf_cnpj="11144477735"
+        ).to_dict() == {"action": "confirm_signer", "cpfCnpj": "11144477735"}
+
+    def test_rejected_step_is_read_from_the_body_not_the_status(self):
+        from signdocs_brasil.models.signing_session import AdvanceSessionResponse
+
+        # A rejected biometric step is HTTP 200 with the session still ACTIVE.
+        # Anything that only branches on the status reads this as success.
+        res = AdvanceSessionResponse.from_dict(
+            {
+                "sessionId": "ss_1",
+                "status": "ACTIVE",
+                "errorCode": "BIOMETRIC_MATCH_FAILED",
+                "errorDetail": "Não foi possível confirmar seu rosto. Tente novamente.",
+                "retryable": True,
+            }
+        )
+        assert res.status == "ACTIVE"
+        assert res.error_code == "BIOMETRIC_MATCH_FAILED"
+        assert res.retryable is True
+
+    def test_exhausted_attempts_are_not_retryable(self):
+        from signdocs_brasil.models.signing_session import AdvanceSessionResponse
+
+        res = AdvanceSessionResponse.from_dict(
+            {"sessionId": "ss_1", "status": "ACTIVE", "errorCode": "DOCUMENT_QUALITY_LOW", "retryable": False}
+        )
+        assert res.retryable is False
+
+    def test_fallback_and_autopass_are_parsed(self):
+        from signdocs_brasil.models.signing_session import AdvanceSessionResponse
+
+        res = AdvanceSessionResponse.from_dict(
+            {
+                "sessionId": "ss_1",
+                "status": "ACTIVE",
+                "sandbox": {"otpCode": "123456", "autoPass": True},
+                "fallback": {
+                    "triggered": True,
+                    "reason": "BIOMETRIC_UNAVAILABLE",
+                    "nextStepType": "DOCUMENT_PHOTO_MATCH",
+                },
+            }
+        )
+        assert res.sandbox.auto_pass is True
+        assert res.fallback.triggered is True
+        assert res.fallback.next_step_type == "DOCUMENT_PHOTO_MATCH"
+
+    def test_absent_optional_fields_stay_none(self):
+        from signdocs_brasil.models.signing_session import AdvanceSessionResponse
+
+        res = AdvanceSessionResponse.from_dict({"sessionId": "ss_1", "status": "COMPLETED"})
+        assert res.error_code is None
+        assert res.retryable is None
+        assert res.fallback is None

@@ -59,11 +59,23 @@ class PolicyRequest:
 
     profile: str
     custom_steps: list[str] | None = None
+    #: Minimum facial-match similarity required (BIOMETRIC_MATCH,
+    #: DOCUMENT_PHOTO_MATCH). Tightens only — a value below the tenant's
+    #: configured threshold is rejected with 400 naming the current minimum,
+    #: never silently ignored. Percentage (95) or fraction (0.95).
+    min_similarity: float | None = None
+    #: Minimum liveness confidence required (BIOMETRIC_LIVENESS). Same rule:
+    #: tightens only, 400 when below the tenant's floor.
+    min_liveness_confidence: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {"profile": self.profile}
         if self.custom_steps is not None:
             d["customSteps"] = self.custom_steps
+        if self.min_similarity is not None:
+            d["minSimilarity"] = self.min_similarity
+        if self.min_liveness_confidence is not None:
+            d["minLivenessConfidence"] = self.min_liveness_confidence
         return d
 
 

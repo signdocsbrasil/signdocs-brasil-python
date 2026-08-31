@@ -163,3 +163,48 @@ class TestWebhookTestResponseDeserialization:
         assert resp.test_delivery.success is False
         assert resp.test_delivery.error == "Bad Gateway"
         assert resp.to_dict() == payload
+
+
+class TestPolicyBiometricBars:
+    """Per-request biometric bars on Policy / PolicyRequest."""
+
+    def test_unset_bars_are_omitted(self):
+        from signdocs_brasil.models.transaction import Policy
+
+        # Sending 0 would be rejected by the API, so an unset bar must not
+        # appear in the payload at all.
+        result = Policy(profile="BIOMETRIC").to_dict()
+        assert "minSimilarity" not in result
+        assert "minLivenessConfidence" not in result
+
+    def test_bars_round_trip(self):
+        from signdocs_brasil.models.transaction import Policy
+
+        policy = Policy.from_dict(
+            {"profile": "BIOMETRIC", "minSimilarity": 95, "minLivenessConfidence": 90}
+        )
+        assert policy.min_similarity == 95
+        assert policy.min_liveness_confidence == 90
+        assert policy.to_dict() == {
+            "profile": "BIOMETRIC",
+            "minSimilarity": 95,
+            "minLivenessConfidence": 90,
+        }
+
+    def test_fractional_bar_passes_through_untouched(self):
+        from signdocs_brasil.models.transaction import Policy
+
+        # The API normalises 0.95 and 95 to the same percentage; the SDK must
+        # not guess which the caller meant.
+        assert Policy(profile="BIOMETRIC", min_similarity=0.95).to_dict()["minSimilarity"] == 0.95
+
+    def test_session_policy_request_carries_bars(self):
+        from signdocs_brasil.models.signing_session import PolicyRequest
+
+        assert PolicyRequest(
+            profile="BIOMETRIC", min_similarity=99, min_liveness_confidence=95
+        ).to_dict() == {
+            "profile": "BIOMETRIC",
+            "minSimilarity": 99,
+            "minLivenessConfidence": 95,
+        }

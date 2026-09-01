@@ -90,6 +90,7 @@ from .user import (
     EnrollUserRequest,
     EnrollUserResponse,
     EnrollUsersBatchResponse,
+    InspectEnrollmentResponse,
 )
 from .webhook import (
     NT65_EVENTS,
@@ -185,6 +186,7 @@ __all__ = [
     "EnrollmentStatusResponse",
     "DeleteEnrollmentResponse",
     "EnrollUsersBatchResponse",
+    "InspectEnrollmentResponse",
     "BatchEnrollmentResult",
     # Health
     "ServiceHealth",

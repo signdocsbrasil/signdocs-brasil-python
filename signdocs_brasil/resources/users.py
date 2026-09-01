@@ -10,6 +10,7 @@ from ..models.user import (
     EnrollUserRequest,
     EnrollUserResponse,
     EnrollUsersBatchResponse,
+    InspectEnrollmentResponse,
 )
 
 if TYPE_CHECKING:
@@ -138,3 +139,34 @@ class UsersResource:
             timeout=timeout,
         )
         return EnrollUsersBatchResponse.from_dict(data)
+
+    def inspect(
+        self,
+        user_external_id: str,
+        request: EnrollUserRequest,
+        *,
+        timeout: int | None = None,
+    ) -> InspectEnrollmentResponse:
+        """Inspect one photo without storing it.
+
+        Same verdict the batch endpoint returns, from the same code — a photo
+        must not be judged differently depending on which endpoint you asked.
+        Nothing is persisted and the 90-day retention clock never starts.
+
+        Args:
+            user_external_id: The external user identifier.
+            request: The candidate photo.
+            timeout: Per-request timeout in milliseconds.
+
+        Returns:
+            InspectEnrollmentResponse with the verdict and metrics.
+        """
+        body = request.to_dict()
+        body["dryRun"] = True
+        data = self._http.request(
+            "PUT",
+            f"/v1/users/{user_external_id}/enrollment",
+            body=body,
+            timeout=timeout,
+        )
+        return InspectEnrollmentResponse.from_dict(data)

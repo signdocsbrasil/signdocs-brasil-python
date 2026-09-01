@@ -430,3 +430,85 @@ class TestBatchEnrollmentDryRun:
         assert res.succeeded == 1
         assert res.results[0].enrollment_version == 2
         assert res.results[0].quality is None
+
+
+class TestEnrollmentQualityFeedback:
+    """Metrics on a real enrolment, and the PUT dry run."""
+
+    def test_successful_enrolment_still_reports_warnings(self):
+        from signdocs_brasil.models.user import EnrollUserResponse
+
+        # The trap: detection confidence is ~100 on a photo that makes a poor
+        # reference. Without warnings the caller has no signal at all.
+        res = EnrollUserResponse.from_dict(
+            {
+                "userExternalId": "matricula-4471",
+                "enrollmentHash": "h",
+                "enrollmentVersion": 1,
+                "enrollmentSource": "BANK_PROVIDED",
+                "enrolledAt": "2026-09-01T00:00:00.000Z",
+                "cpf": "11144477735",
+                "faceConfidence": 99.99,
+                "quality": {"brightness": 15, "sharpness": 13},
+                "pose": {"yaw": 3, "pitch": 6, "roll": 0},
+                "faceCoverage": 0.4222,
+                "warnings": ["LOW_BRIGHTNESS", "LOW_SHARPNESS"],
+            }
+        )
+
+        assert res.face_confidence == 99.99
+        assert res.quality.brightness == 15
+        assert res.pose.pitch == 6
+        assert res.face_coverage == 0.4222
+        assert res.warnings == ["LOW_BRIGHTNESS", "LOW_SHARPNESS"]
+
+    def test_clean_enrolment_has_empty_warnings(self):
+        from signdocs_brasil.models.user import EnrollUserResponse
+
+        res = EnrollUserResponse.from_dict(
+            {
+                "userExternalId": "a",
+                "enrollmentHash": "h",
+                "enrollmentVersion": 1,
+                "enrollmentSource": "BANK_PROVIDED",
+                "enrolledAt": "x",
+                "cpf": "11144477735",
+                "faceConfidence": 99.9,
+                "quality": {"brightness": 72, "sharpness": 92},
+                "warnings": [],
+            }
+        )
+
+        assert res.warnings == []
+        assert res.pose is None
+
+    def test_dry_run_verdict(self):
+        from signdocs_brasil.models.user import InspectEnrollmentResponse
+
+        res = InspectEnrollmentResponse.from_dict(
+            {
+                "dryRun": True,
+                "userExternalId": "a",
+                "status": "marginal",
+                "faceConfidence": 99.99,
+                "quality": {"brightness": 15, "sharpness": 13},
+                "faceCoverage": 0.4222,
+                "warnings": ["LOW_BRIGHTNESS"],
+            }
+        )
+
+        assert res.dry_run is True
+        assert res.status == "marginal"
+        assert res.quality.sharpness == 13
+        assert res.warnings == ["LOW_BRIGHTNESS"]
+
+    def test_dry_run_rejection_carries_the_reason(self):
+        from signdocs_brasil.models.user import InspectEnrollmentResponse
+
+        res = InspectEnrollmentResponse.from_dict(
+            {"dryRun": True, "status": "rejected", "error": "No face detected", "warnings": []}
+        )
+
+        assert res.status == "rejected"
+        assert res.error == "No face detected"
+        assert res.quality is None

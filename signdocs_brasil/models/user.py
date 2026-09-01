@@ -22,6 +22,42 @@ class EnrollUserRequest:
         }
 
 
+#: Advisory reasons a reference photo is usable but weak. A row carrying any of
+#: these enrols without complaint today and is exactly what fails face matching
+#: later, which is the whole reason the dry run exists.
+EnrollmentWarning = Literal[
+    "LOW_BRIGHTNESS",
+    "LOW_SHARPNESS",
+    "FACE_TOO_SMALL",
+    "HEAD_TURNED",
+]
+
+
+@dataclass
+class FaceQualityMetrics:
+    """Rekognition's 0-100 measures for the detected face. Dry run only."""
+
+    brightness: float | None = None
+    sharpness: float | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> FaceQualityMetrics:
+        return cls(brightness=data.get("brightness"), sharpness=data.get("sharpness"))
+
+
+@dataclass
+class FacePoseMetrics:
+    """Head rotation in degrees. Dry run only."""
+
+    yaw: float | None = None
+    pitch: float | None = None
+    roll: float | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> FacePoseMetrics:
+        return cls(yaw=data.get("yaw"), pitch=data.get("pitch"), roll=data.get("roll"))
+
+
 @dataclass
 class EnrollUserResponse:
     """Response after enrolling a user."""
@@ -35,6 +71,14 @@ class EnrollUserResponse:
     face_confidence: float
     document_image_hash: str | None = None
     extraction_confidence: float | None = None
+    #: Capture metrics for the stored reference.
+    quality: FaceQualityMetrics | None = None
+    pose: FacePoseMetrics | None = None
+    face_coverage: float | None = None
+    #: Quality advisories. Present on a *successful* enrolment too — the photo
+    #: is stored either way, and knowing it is weak now beats finding out from a
+    #: failed signature months later. Empty when there is nothing to flag.
+    warnings: list[str] | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> EnrollUserResponse:
@@ -48,6 +92,43 @@ class EnrollUserResponse:
             face_confidence=data["faceConfidence"],
             document_image_hash=data.get("documentImageHash"),
             extraction_confidence=data.get("extractionConfidence"),
+            quality=FaceQualityMetrics.from_dict(data["quality"]) if data.get("quality") else None,
+            pose=FacePoseMetrics.from_dict(data["pose"]) if data.get("pose") else None,
+            face_coverage=data.get("faceCoverage"),
+            warnings=data.get("warnings"),
+        )
+
+
+@dataclass
+class InspectEnrollmentResponse:
+    """Verdict for one candidate photo, from a ``dry_run``.
+
+    ``marginal`` is the one to act on: it would enrol without complaint and is
+    exactly what becomes a rejected signature later.
+    """
+
+    status: str
+    warnings: list[str]
+    dry_run: bool = True
+    user_external_id: str | None = None
+    error: str | None = None
+    face_confidence: float | None = None
+    quality: FaceQualityMetrics | None = None
+    pose: FacePoseMetrics | None = None
+    face_coverage: float | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> InspectEnrollmentResponse:
+        return cls(
+            status=data["status"],
+            warnings=data.get("warnings", []),
+            dry_run=bool(data.get("dryRun", True)),
+            user_external_id=data.get("userExternalId"),
+            error=data.get("error"),
+            face_confidence=data.get("faceConfidence"),
+            quality=FaceQualityMetrics.from_dict(data["quality"]) if data.get("quality") else None,
+            pose=FacePoseMetrics.from_dict(data["pose"]) if data.get("pose") else None,
+            face_coverage=data.get("faceCoverage"),
         )
 
 
@@ -118,42 +199,6 @@ class DeleteEnrollmentResponse:
             objects_deleted=data.get("objectsDeleted"),
             versions_deleted=data.get("versionsDeleted"),
         )
-
-
-#: Advisory reasons a reference photo is usable but weak. A row carrying any of
-#: these enrols without complaint today and is exactly what fails face matching
-#: later, which is the whole reason the dry run exists.
-EnrollmentWarning = Literal[
-    "LOW_BRIGHTNESS",
-    "LOW_SHARPNESS",
-    "FACE_TOO_SMALL",
-    "HEAD_TURNED",
-]
-
-
-@dataclass
-class FaceQualityMetrics:
-    """Rekognition's 0-100 measures for the detected face. Dry run only."""
-
-    brightness: float | None = None
-    sharpness: float | None = None
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> FaceQualityMetrics:
-        return cls(brightness=data.get("brightness"), sharpness=data.get("sharpness"))
-
-
-@dataclass
-class FacePoseMetrics:
-    """Head rotation in degrees. Dry run only."""
-
-    yaw: float | None = None
-    pitch: float | None = None
-    roll: float | None = None
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> FacePoseMetrics:
-        return cls(yaw=data.get("yaw"), pitch=data.get("pitch"), roll=data.get("roll"))
 
 
 @dataclass

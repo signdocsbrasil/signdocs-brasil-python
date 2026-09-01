@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from ..models.user import (
     DeleteEnrollmentResponse,
     EnrollmentStatusResponse,
     EnrollUserRequest,
     EnrollUserResponse,
+    EnrollUsersBatchResponse,
 )
 
 if TYPE_CHECKING:
@@ -97,3 +98,43 @@ class UsersResource:
             timeout=timeout,
         )
         return DeleteEnrollmentResponse.from_dict(data)
+
+    def enroll_batch(
+        self,
+        enrollments: list[dict[str, Any]],
+        *,
+        dry_run: bool = False,
+        timeout: int | None = None,
+    ) -> EnrollUsersBatchResponse:
+        """Enrol up to 25 users in one request.
+
+        The documented cap is 25 rows, but the binding limit is the request
+        body — roughly 6MB, and base64 inflates each photo by a third. Keep
+        photos under ~175KB (640x640 is ample) to use all 25 slots.
+
+        With ``dry_run`` nothing is persisted: every row is inspected and
+        returned with quality metrics, no image reaches storage, and the 90-day
+        retention clock never starts. Rekognition's confidence answers "is this
+        a face?", not "is this a good reference" — a dark, blurred photo enrols
+        happily at 99.99 confidence and fails face matching months later. A dry
+        run surfaces that while the batch is still in front of you.
+
+        Args:
+            enrollments: Rows, each with userExternalId, image and cpf.
+            dry_run: Inspect without writing.
+            timeout: Per-request timeout in milliseconds.
+
+        Returns:
+            EnrollUsersBatchResponse. Read ``results`` — a batch with failed
+            rows is still HTTP 200.
+        """
+        body: dict[str, Any] = {"enrollments": enrollments}
+        if dry_run:
+            body["dryRun"] = True
+        data = self._http.request(
+            "POST",
+            "/v1/users/enrollments",
+            body=body,
+            timeout=timeout,
+        )
+        return EnrollUsersBatchResponse.from_dict(data)

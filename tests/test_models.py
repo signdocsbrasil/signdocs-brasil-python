@@ -361,3 +361,72 @@ class TestEnrollmentLifecycle:
         )
         assert res.deleted is True
         assert res.versions_deleted == 3
+
+
+class TestBatchEnrollmentDryRun:
+    """Screening reference photos before committing them."""
+
+    def test_dry_run_reports_quality_per_row(self):
+        from signdocs_brasil.models.user import EnrollUsersBatchResponse
+
+        res = EnrollUsersBatchResponse.from_dict(
+            {
+                "dryRun": True,
+                "submitted": 2,
+                "usable": 1,
+                "marginal": 1,
+                "rejected": 0,
+                "results": [
+                    {
+                        "index": 0,
+                        "userExternalId": "matricula-4471",
+                        "status": "usable",
+                        "faceConfidence": 99.9,
+                        "quality": {"brightness": 72, "sharpness": 92},
+                        "pose": {"yaw": -3, "pitch": 2, "roll": 1},
+                        "faceCoverage": 0.43,
+                        "warnings": [],
+                    },
+                    {
+                        "index": 1,
+                        "userExternalId": "matricula-4472",
+                        "status": "marginal",
+                        "quality": {"brightness": 15, "sharpness": 13},
+                        "warnings": ["LOW_BRIGHTNESS", "LOW_SHARPNESS"],
+                    },
+                ],
+            }
+        )
+
+        assert res.dry_run is True
+        assert (res.usable, res.marginal) == (1, 1)
+        assert res.results[0].quality.brightness == 72
+        assert res.results[0].pose.yaw == -3
+        assert res.results[0].face_coverage == 0.43
+        # marginal enrols fine today — it is the row that fails matching later
+        assert res.results[1].status == "marginal"
+        assert "LOW_BRIGHTNESS" in res.results[1].warnings
+
+    def test_real_write_has_no_dry_run_fields(self):
+        from signdocs_brasil.models.user import EnrollUsersBatchResponse
+
+        res = EnrollUsersBatchResponse.from_dict(
+            {
+                "submitted": 1,
+                "succeeded": 1,
+                "failed": 0,
+                "results": [
+                    {
+                        "index": 0,
+                        "userExternalId": "a",
+                        "status": "enrolled",
+                        "enrollmentVersion": 2,
+                    }
+                ],
+            }
+        )
+
+        assert res.dry_run is None
+        assert res.succeeded == 1
+        assert res.results[0].enrollment_version == 2
+        assert res.results[0].quality is None

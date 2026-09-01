@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 
 @dataclass
@@ -117,4 +117,115 @@ class DeleteEnrollmentResponse:
             enrollment_version=data.get("enrollmentVersion"),
             objects_deleted=data.get("objectsDeleted"),
             versions_deleted=data.get("versionsDeleted"),
+        )
+
+
+#: Advisory reasons a reference photo is usable but weak. A row carrying any of
+#: these enrols without complaint today and is exactly what fails face matching
+#: later, which is the whole reason the dry run exists.
+EnrollmentWarning = Literal[
+    "LOW_BRIGHTNESS",
+    "LOW_SHARPNESS",
+    "FACE_TOO_SMALL",
+    "HEAD_TURNED",
+]
+
+
+@dataclass
+class FaceQualityMetrics:
+    """Rekognition's 0-100 measures for the detected face. Dry run only."""
+
+    brightness: float | None = None
+    sharpness: float | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> FaceQualityMetrics:
+        return cls(brightness=data.get("brightness"), sharpness=data.get("sharpness"))
+
+
+@dataclass
+class FacePoseMetrics:
+    """Head rotation in degrees. Dry run only."""
+
+    yaw: float | None = None
+    pitch: float | None = None
+    roll: float | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> FacePoseMetrics:
+        return cls(yaw=data.get("yaw"), pitch=data.get("pitch"), roll=data.get("roll"))
+
+
+@dataclass
+class BatchEnrollmentResult:
+    """One row's outcome.
+
+    ``status`` is ``enrolled``/``failed`` on a real write and
+    ``usable``/``marginal``/``rejected`` on a dry run. ``marginal`` is the one to
+    act on: it would enrol without complaint today and is exactly what becomes a
+    rejected signature later.
+    """
+
+    index: int
+    status: str
+    user_external_id: str | None = None
+    error: str | None = None
+    enrollment_version: int | None = None
+    expires_at: str | None = None
+    face_confidence: float | None = None
+    quality: FaceQualityMetrics | None = None
+    pose: FacePoseMetrics | None = None
+    #: Face area as a fraction of the frame, 0-1. Dry run only.
+    face_coverage: float | None = None
+    #: Advisory reasons a photo is usable but weak. Empty on a clean photo.
+    warnings: list[str] | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> BatchEnrollmentResult:
+        return cls(
+            index=data["index"],
+            status=data["status"],
+            user_external_id=data.get("userExternalId"),
+            error=data.get("error"),
+            enrollment_version=data.get("enrollmentVersion"),
+            expires_at=data.get("expiresAt"),
+            face_confidence=data.get("faceConfidence"),
+            quality=FaceQualityMetrics.from_dict(data["quality"]) if data.get("quality") else None,
+            pose=FacePoseMetrics.from_dict(data["pose"]) if data.get("pose") else None,
+            face_coverage=data.get("faceCoverage"),
+            warnings=data.get("warnings"),
+        )
+
+
+@dataclass
+class EnrollUsersBatchResponse:
+    """Result of a batch enrollment.
+
+    Partial success is the point, so this comes back ``200`` even when rows
+    failed: one unusable photo must not reject the other twenty-four. Read
+    ``results``, not the HTTP status.
+    """
+
+    submitted: int
+    results: list[BatchEnrollmentResult]
+    #: Real writes only.
+    succeeded: int | None = None
+    failed: int | None = None
+    #: Dry runs only.
+    dry_run: bool | None = None
+    usable: int | None = None
+    marginal: int | None = None
+    rejected: int | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> EnrollUsersBatchResponse:
+        return cls(
+            submitted=data["submitted"],
+            results=[BatchEnrollmentResult.from_dict(r) for r in data.get("results", [])],
+            succeeded=data.get("succeeded"),
+            failed=data.get("failed"),
+            dry_run=data.get("dryRun"),
+            usable=data.get("usable"),
+            marginal=data.get("marginal"),
+            rejected=data.get("rejected"),
         )

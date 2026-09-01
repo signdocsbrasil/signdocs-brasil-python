@@ -84,10 +84,12 @@ from .transaction import (
     TransactionStatus,
 )
 from .user import (
+    BatchEnrollmentResult,
     DeleteEnrollmentResponse,
     EnrollmentStatusResponse,
     EnrollUserRequest,
     EnrollUserResponse,
+    EnrollUsersBatchResponse,
 )
 from .webhook import (
     NT65_EVENTS,
@@ -182,6 +184,8 @@ __all__ = [
     "EnrollUserResponse",
     "EnrollmentStatusResponse",
     "DeleteEnrollmentResponse",
+    "EnrollUsersBatchResponse",
+    "BatchEnrollmentResult",
     # Health
     "ServiceHealth",
     "HealthCheckResponse",

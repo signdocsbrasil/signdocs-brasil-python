@@ -292,3 +292,67 @@ class TestAdvanceSessionSurface:
         assert res.error_code is None
         assert res.retryable is None
         assert res.fallback is None
+
+
+class TestEnrollmentLifecycle:
+    """GET / DELETE on an enrolment — the re-enrolment sweep and erasure."""
+
+    def test_status_reports_the_expiry_window(self):
+        from signdocs_brasil.models.user import EnrollmentStatusResponse
+
+        res = EnrollmentStatusResponse.from_dict(
+            {
+                "userExternalId": "emp_001",
+                "enrollmentSource": "BANK_PROVIDED",
+                "enrollmentVersion": 2,
+                "enrollmentHash": "abc",
+                "enrolledAt": "2026-08-31T00:00:00.000Z",
+                "expiresAt": "2026-11-29T00:00:00.000Z",
+                "expired": False,
+                "retentionDays": 90,
+                "maskedCpf": "***7735",
+                "faceConfidence": 99.9,
+            }
+        )
+        assert res.expires_at == "2026-11-29T00:00:00.000Z"
+        assert res.expired is False
+        assert res.retention_days == 90
+        assert res.masked_cpf == "***7735"
+
+    def test_expired_enrolment_is_flagged(self):
+        from signdocs_brasil.models.user import EnrollmentStatusResponse
+
+        # This is the whole point of the endpoint: catch it here rather than as
+        # a 422 in the middle of a signature.
+        res = EnrollmentStatusResponse.from_dict(
+            {
+                "userExternalId": "emp_002",
+                "enrollmentSource": "BANK_PROVIDED",
+                "enrollmentVersion": 1,
+                "enrollmentHash": "abc",
+                "enrolledAt": "2026-01-01T00:00:00.000Z",
+                "expiresAt": "2026-04-01T00:00:00.000Z",
+                "expired": True,
+                "retentionDays": 90,
+            }
+        )
+        assert res.expired is True
+        assert res.masked_cpf is None
+
+    def test_delete_reports_every_destroyed_version(self):
+        from signdocs_brasil.models.user import DeleteEnrollmentResponse
+
+        # Versioned storage: a plain delete would only write a marker and the
+        # image would still be recoverable, so the count matters.
+        res = DeleteEnrollmentResponse.from_dict(
+            {
+                "userExternalId": "emp_001",
+                "deleted": True,
+                "deletedAt": "2026-08-31T21:00:40.260Z",
+                "enrollmentVersion": 2,
+                "objectsDeleted": 1,
+                "versionsDeleted": 3,
+            }
+        )
+        assert res.deleted is True
+        assert res.versions_deleted == 3

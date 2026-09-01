@@ -262,7 +262,12 @@ class TestAdvanceSessionSurface:
         from signdocs_brasil.models.signing_session import AdvanceSessionResponse
 
         res = AdvanceSessionResponse.from_dict(
-            {"sessionId": "ss_1", "status": "ACTIVE", "errorCode": "DOCUMENT_QUALITY_LOW", "retryable": False}
+            {
+                "sessionId": "ss_1",
+                "status": "ACTIVE",
+                "errorCode": "DOCUMENT_QUALITY_LOW",
+                "retryable": False,
+            }
         )
         assert res.retryable is False
 

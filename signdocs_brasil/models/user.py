@@ -79,6 +79,14 @@ class EnrollUserResponse:
     #: is stored either way, and knowing it is weak now beats finding out from a
     #: failed signature months later. Empty when there is nothing to flag.
     warnings: list[str] | None = None
+    #: Whether the photo works as a reference: ``usable``, ``marginal`` or
+    #: ``rejected``. Read this rather than deriving it from ``warnings``.
+    #:
+    #: Deliberately not ``status``: on a batch row ``status`` says what happened
+    #: to the write (``enrolled``/``failed``), a different question. A poor photo
+    #: that stored fine is ``status="enrolled"`` with
+    #: ``reference_quality="marginal"`` — the combination worth acting on.
+    reference_quality: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> EnrollUserResponse:
@@ -96,6 +104,7 @@ class EnrollUserResponse:
             pose=FacePoseMetrics.from_dict(data["pose"]) if data.get("pose") else None,
             face_coverage=data.get("faceCoverage"),
             warnings=data.get("warnings"),
+            reference_quality=data.get("referenceQuality"),
         )
 
 
@@ -116,6 +125,8 @@ class InspectEnrollmentResponse:
     quality: FaceQualityMetrics | None = None
     pose: FacePoseMetrics | None = None
     face_coverage: float | None = None
+    #: Same field a real enrolment returns. In a dry run it equals ``status``.
+    reference_quality: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> InspectEnrollmentResponse:
@@ -129,6 +140,7 @@ class InspectEnrollmentResponse:
             quality=FaceQualityMetrics.from_dict(data["quality"]) if data.get("quality") else None,
             pose=FacePoseMetrics.from_dict(data["pose"]) if data.get("pose") else None,
             face_coverage=data.get("faceCoverage"),
+            reference_quality=data.get("referenceQuality"),
         )
 
 
@@ -224,6 +236,14 @@ class BatchEnrollmentResult:
     face_coverage: float | None = None
     #: Advisory reasons a photo is usable but weak. Empty on a clean photo.
     warnings: list[str] | None = None
+    #: Whether the photo works as a reference: ``usable``, ``marginal`` or
+    #: ``rejected``. Read this rather than deriving it from ``warnings``.
+    #:
+    #: Deliberately not ``status``: on a batch row ``status`` says what happened
+    #: to the write (``enrolled``/``failed``), a different question. A poor photo
+    #: that stored fine is ``status="enrolled"`` with
+    #: ``reference_quality="marginal"`` — the combination worth acting on.
+    reference_quality: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> BatchEnrollmentResult:
@@ -239,6 +259,7 @@ class BatchEnrollmentResult:
             pose=FacePoseMetrics.from_dict(data["pose"]) if data.get("pose") else None,
             face_coverage=data.get("faceCoverage"),
             warnings=data.get("warnings"),
+            reference_quality=data.get("referenceQuality"),
         )
 
 

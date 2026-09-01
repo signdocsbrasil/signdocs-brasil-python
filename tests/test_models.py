@@ -512,3 +512,54 @@ class TestEnrollmentQualityFeedback:
         assert res.status == "rejected"
         assert res.error == "No face detected"
         assert res.quality is None
+
+
+class TestReferenceQuality:
+    """One verdict key, same values, wherever it appears."""
+
+    def test_real_enrolment_states_the_verdict(self):
+        from signdocs_brasil.models.user import EnrollUserResponse
+
+        res = EnrollUserResponse.from_dict(
+            {
+                "userExternalId": "a",
+                "enrollmentHash": "h",
+                "enrollmentVersion": 1,
+                "enrollmentSource": "BANK_PROVIDED",
+                "enrolledAt": "x",
+                "cpf": "11144477735",
+                "faceConfidence": 99.99,
+                "warnings": ["LOW_BRIGHTNESS"],
+                "referenceQuality": "marginal",
+            }
+        )
+
+        # Stated, not derived from len(warnings).
+        assert res.reference_quality == "marginal"
+
+    def test_batch_row_separates_write_outcome_from_photo_verdict(self):
+        from signdocs_brasil.models.user import BatchEnrollmentResult
+
+        row = BatchEnrollmentResult.from_dict(
+            {
+                "index": 0,
+                "userExternalId": "a",
+                "status": "enrolled",
+                "warnings": ["LOW_SHARPNESS"],
+                "referenceQuality": "marginal",
+            }
+        )
+
+        # The combination that matters: it stored fine AND it is a weak
+        # reference. One field could not express both.
+        assert row.status == "enrolled"
+        assert row.reference_quality == "marginal"
+
+    def test_dry_run_carries_the_same_field(self):
+        from signdocs_brasil.models.user import InspectEnrollmentResponse
+
+        res = InspectEnrollmentResponse.from_dict(
+            {"status": "usable", "warnings": [], "referenceQuality": "usable"}
+        )
+
+        assert res.reference_quality == "usable"

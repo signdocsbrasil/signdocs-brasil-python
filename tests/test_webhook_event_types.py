@@ -21,9 +21,6 @@ CANONICAL_EVENTS: frozenset[str] = frozenset(
         "TRANSACTION.EXPIRED",
         "TRANSACTION.FALLBACK",
         "TRANSACTION.DEADLINE_APPROACHING",
-        "STEP.STARTED",
-        "STEP.COMPLETED",
-        "STEP.FAILED",
         "STEP.PURPOSE_DISCLOSURE_SENT",
         "ENROLLMENT.EXPIRING",
         "ENROLLMENT.EXPIRED",
@@ -35,17 +32,18 @@ CANONICAL_EVENTS: frozenset[str] = frozenset(
         "SIGNING_SESSION.EXPIRED",
         "ENVELOPE.CREATED",
         "ENVELOPE.ALL_SIGNED",
+        "ENVELOPE.CANCELLED",
         "ENVELOPE.EXPIRED",
     }
 )
 
 
 class TestWebhookEventTypeLockstep:
-    def test_exactly_22_events(self):
+    def test_exactly_23_events(self):
         # Bumped 20 -> 22 when ENROLLMENT.EXPIRING / ENROLLMENT.EXPIRED landed
         # in the spec. This count is a tripwire on purpose: a spec addition
         # should fail here until someone decides the SDK models it too.
-        assert len(CANONICAL_EVENTS) == 22
+        assert len(CANONICAL_EVENTS) == 20
 
     def test_literal_contains_all_canonical_events(self):
         literal_values = frozenset(get_args(WebhookEventType))

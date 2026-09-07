@@ -1,6 +1,8 @@
 # signdocs-brasil
 
-SDK oficial em Python para a API SignDocsBrasil.
+SDK oficial em Python para a API SignDocs Brasil: assinatura eletrônica e digital de documentos com ICP-Brasil, certificado digital, biometria, OTP e trilha de evidências.
+
+Official Python SDK for the SignDocs Brasil e-signature API.
 
 ## Requisitos
 

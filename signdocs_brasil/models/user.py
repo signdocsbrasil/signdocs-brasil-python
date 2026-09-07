@@ -12,7 +12,10 @@ class EnrollUserRequest:
 
     image: str
     cpf: str
-    source: str = "BANK_PROVIDED"
+    #: Where the reference image came from. "BANK_PROVIDED" is the former
+    #: name of "ORGANIZATION_PROVIDED" and is still accepted by the API,
+    #: normalised away on write.
+    source: str = "ORGANIZATION_PROVIDED"
 
     def to_dict(self) -> dict[str, Any]:
         return {

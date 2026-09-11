@@ -231,15 +231,16 @@ class SigningSessionsResource:
         self,
         session_id: str,
         *,
-        channel: Literal["email", "sms"] | None = None,
+        channel: Literal["email", "sms", "whatsapp", "telegram"] | None = None,
         timeout: int | None = None,
     ) -> AdvanceSessionResponse:
         """Resend the OTP challenge for a signing session.
 
         Args:
             session_id: The session ID.
-            channel: Optional delivery channel for the resent OTP ("email" or "sms").
-                When omitted, the API uses the signer's configured channel.
+            channel: Optional delivery channel for the resent OTP ("email", "sms",
+                "whatsapp" or "telegram"). When omitted, the API uses the signer's
+                configured channel.
             timeout: Per-request timeout in milliseconds.
 
         Returns:

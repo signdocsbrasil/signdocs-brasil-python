@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from .signing_session import Owner
 
@@ -88,6 +88,12 @@ class AddEnvelopeSessionRequest:
     return_url: str | None = None
     cancel_url: str | None = None
     metadata: dict[str, str] | None = None
+    #: Channels SignDocs uses to deliver the signing link to this signer.
+    #: ``None`` keeps the previous behavior: the invite email only. In a
+    #: SEQUENTIAL envelope a later signer receives the link over these
+    #: channels when their turn comes. Same rules as
+    #: ``CreateSigningSessionRequest.deliver_via``.
+    deliver_via: list[Literal["email", "whatsapp", "telegram"]] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         signer: dict[str, Any] = {
@@ -119,6 +125,8 @@ class AddEnvelopeSessionRequest:
             d["cancelUrl"] = self.cancel_url
         if self.metadata is not None:
             d["metadata"] = self.metadata
+        if self.deliver_via is not None:
+            d["deliverVia"] = self.deliver_via
         return d
 
 
@@ -133,6 +141,13 @@ class EnvelopeSession:
     client_secret: str
     expires_at: str
     invite_sent: bool | None = None
+    #: ``True`` when Meta accepted the WhatsApp message carrying the link —
+    #: accepted, not delivered. ``None`` otherwise.
+    whatsapp_invite_sent: bool | None = None
+    #: Result of the Telegram delivery, set whenever ``deliver_via`` included
+    #: ``"telegram"``. ``False`` means the link did not reach the signer over
+    #: Telegram (no CPF registered with the bot, or the send failed).
+    telegram_invite_sent: bool | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> EnvelopeSession:
@@ -145,6 +160,8 @@ class EnvelopeSession:
             client_secret=data["clientSecret"],
             expires_at=data["expiresAt"],
             invite_sent=data.get("inviteSent"),
+            whatsapp_invite_sent=data.get("whatsappInviteSent"),
+            telegram_invite_sent=data.get("telegramInviteSent"),
         )
 
 

@@ -44,7 +44,7 @@ TransactionPurpose = Literal["DOCUMENT_SIGNATURE", "ACTION_AUTHENTICATION"]
 
 CaptureMode = Literal["BANK_APP", "HOSTED_PAGE"]
 
-OtpChannel = Literal["email", "sms"]
+OtpChannel = Literal["email", "sms", "whatsapp", "telegram"]
 
 GeolocationSource = Literal["GPS", "IP", "WIFI", "CELL"]
 

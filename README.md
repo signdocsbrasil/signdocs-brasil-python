@@ -114,6 +114,30 @@ session2 = client.envelopes.add_session(envelope.envelope_id, AddEnvelopeSession
 print(session1.url, session2.url)
 ```
 
+## Canais de entrega
+
+A SignDocs entrega o link por e-mail, WhatsApp ou Telegram — escolha por signatário em `deliverVia`. WhatsApp e Telegram são habilitados sob demanda; fale com o time comercial. WhatsApp exige `signer.phone` em E.164; Telegram exige `signer.cpf` e só alcança quem já registrou o CPF no bot da SignDocs. O OTP pode ir por `email`, `sms`, `whatsapp` ou `telegram` (`otpChannel`), independentemente do canal do link. Cada envio por WhatsApp ou Telegram consome a cota de mensagens do tenant; esgotada, a API responde 429.
+
+```python
+from signdocs_brasil.models.signing_session import (
+    CreateSigningSessionRequest, SignerRequest, PolicyRequest, DocumentRequest,
+)
+
+session = client.signing_sessions.create(CreateSigningSessionRequest(
+    purpose='DOCUMENT_SIGNATURE',
+    policy=PolicyRequest(profile='CLICK_ONLY'),
+    signer=SignerRequest(
+        name='João Silva',
+        user_external_id='user-001',
+        cpf='12345678901',
+        phone='+5511999998888',
+    ),
+    document=DocumentRequest(content=pdf_base64, filename='contrato.pdf'),
+    deliver_via=['whatsapp'],
+))
+print(session.whatsapp_invite_sent)  # True quando a Meta aceitou a mensagem
+```
+
 ## Configuração Avançada
 
 ### Session customizada

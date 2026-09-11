@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from .transaction import OtpChannel
+
 
 @dataclass
 class SignerRequest:
@@ -16,7 +18,7 @@ class SignerRequest:
     phone: str | None = None
     cpf: str | None = None
     cnpj: str | None = None
-    otp_channel: Literal["email", "sms"] | None = None
+    otp_channel: OtpChannel | None = None
     otp_channel_selectable: bool | None = None
     birth_date: str | None = None
 
@@ -198,6 +200,13 @@ class CreateSigningSessionRequest:
     appearance: AppearanceRequest | None = None
     reference_image: ReferenceImageRequest | None = None
     owner: Owner | None = None
+    #: Channels SignDocs uses to deliver the signing link to this signer.
+    #: ``None`` keeps the previous behavior: the invite email only, under the
+    #: ``owner`` rule. WhatsApp and Telegram are enabled on request;
+    #: ``"whatsapp"`` requires ``signer.phone`` in E.164 and ``"telegram"``
+    #: requires ``signer.cpf``. Each WhatsApp or Telegram send consumes the
+    #: tenant's message quota (429 once it runs out).
+    deliver_via: list[Literal["email", "whatsapp", "telegram"]] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {
@@ -227,6 +236,8 @@ class CreateSigningSessionRequest:
             owner_dict = self.owner.to_dict()
             if owner_dict:
                 d["owner"] = owner_dict
+        if self.deliver_via is not None:
+            d["deliverVia"] = self.deliver_via
         return d
 
 
@@ -242,6 +253,13 @@ class SigningSession:
     expires_at: str
     created_at: str
     invite_sent: bool | None = None
+    #: ``True`` when Meta accepted the WhatsApp message carrying the link —
+    #: accepted, not delivered. ``None`` otherwise.
+    whatsapp_invite_sent: bool | None = None
+    #: Result of the Telegram delivery, set whenever ``deliver_via`` included
+    #: ``"telegram"``. ``False`` means the link did not reach the signer over
+    #: Telegram (no CPF registered with the bot, or the send failed).
+    telegram_invite_sent: bool | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> SigningSession:
@@ -254,6 +272,8 @@ class SigningSession:
             expires_at=data["expiresAt"],
             created_at=data["createdAt"],
             invite_sent=data.get("inviteSent"),
+            whatsapp_invite_sent=data.get("whatsappInviteSent"),
+            telegram_invite_sent=data.get("telegramInviteSent"),
         )
 
 
@@ -434,7 +454,7 @@ class AdvanceSessionRequest:
     #: (``confirm_signer``).
     cpf_cnpj: str | None = None
     otp_code: str | None = None
-    otp_channel: Literal["email", "sms"] | None = None
+    otp_channel: OtpChannel | None = None
     liveness_session_id: str | None = None
     certificate_chain_pems: list[str] | None = None
     signature_request_id: str | None = None
@@ -491,7 +511,7 @@ class AdvanceSessionRequest:
 class ResendOtpRequest:
     """Request to resend the OTP challenge, optionally on a chosen channel."""
 
-    channel: Literal["email", "sms"] | None = None
+    channel: OtpChannel | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {}
@@ -627,7 +647,7 @@ class BootstrapSigner:
     masked_email: str | None = None
     masked_cpf: str | None = None
     otp_channel_selectable: bool | None = None
-    available_otp_channels: list[Literal["email", "sms"]] | None = None
+    available_otp_channels: list[OtpChannel] | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> BootstrapSigner:

@@ -563,3 +563,49 @@ class TestReferenceQuality:
         )
 
         assert res.reference_quality == "usable"
+
+
+class TestSignatureTimestamp:
+    def test_complete_signing_parses_signature_timestamp(self) -> None:
+        from signdocs_brasil.models import CompleteSigningResponse
+
+        body = load_fixture("signing-complete-timestamp")["response"]["body"]
+        resp = CompleteSigningResponse.from_dict(body)
+        ts = resp.result.digital_signature.signature_timestamp
+
+        assert ts is not None
+        assert ts.gen_time == "2024-11-15T12:05:02.123Z"
+        assert ts.policy_oid == "2.16.76.1.6.2"
+        assert ts.serial == "78F42C1F9B1D36B9"
+
+    def test_complete_signing_without_feature_has_no_timestamp(self) -> None:
+        from signdocs_brasil.models import CompleteSigningResponse
+
+        body = load_fixture("signing-complete")["response"]["body"]
+        resp = CompleteSigningResponse.from_dict(body)
+
+        assert resp.result.digital_signature.signature_timestamp is None
+        assert resp.result.digital_signature.signed_pdf_hash is not None
+
+    def test_generic_document_result_without_pdf_fields_parses(self) -> None:
+        from signdocs_brasil.models import CompleteSigningResponse
+
+        body = load_fixture("signing-complete")["response"]["body"]
+        ds = body["result"]["digitalSignature"]
+        for key in ("signedPdfHash", "signatureFieldName"):
+            ds.pop(key)
+        ds.update({"signedP7sHash": "ab" * 32, "documentFormat": "generic"})
+        resp = CompleteSigningResponse.from_dict(body)
+
+        assert resp.result.digital_signature.signed_p7s_hash == "ab" * 32
+        assert resp.result.digital_signature.document_format == "generic"
+        assert resp.result.digital_signature.signed_pdf_hash is None
+
+    def test_timestamp_unavailable_error_exposes_code(self) -> None:
+        from signdocs_brasil.errors import ProblemDetail, ServiceUnavailableError
+
+        pd = ProblemDetail.from_dict(load_fixture("error-503-timestamp")["response"]["body"])
+        err = ServiceUnavailableError(pd)
+
+        assert err.code == "TIMESTAMP_UNAVAILABLE"
+        assert pd.retryable is True

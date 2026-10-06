@@ -50,27 +50,64 @@ class CompleteSigningRequest:
 
 
 @dataclass
+class SignatureTimestamp:
+    """ICP-Brasil signature timestamp (carimbo do tempo) embedded in the signature.
+
+    RFC 3161 token from an accredited ACT; present only for tenants with the feature.
+    ``gen_time`` is the time attested by the ACT; ``signed_at`` on the signature
+    result remains the SignDocs server time.
+    """
+
+    gen_time: str
+    tsa_name: str
+    serial: str
+    policy_oid: str
+    token_sha256: str
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> SignatureTimestamp:
+        return cls(
+            gen_time=data["genTime"],
+            tsa_name=data["tsaName"],
+            serial=data["serial"],
+            policy_oid=data["policyOid"],
+            token_sha256=data["tokenSha256"],
+        )
+
+
+@dataclass
 class CompleteSigningDigitalSignatureResult:
-    """Digital signature result nested in the complete signing response."""
+    """Digital signature result nested in the complete signing response.
+
+    ``signed_pdf_hash`` and ``signature_field_name`` are set for PDF documents;
+    ``signed_p7s_hash`` for generic (non-PDF) documents.
+    """
 
     certificate_subject: str
     certificate_serial: str
     certificate_issuer: str
     algorithm: str
     signed_at: str
-    signed_pdf_hash: str
-    signature_field_name: str
+    signed_pdf_hash: str | None = None
+    signature_field_name: str | None = None
+    signed_p7s_hash: str | None = None
+    document_format: str | None = None
+    signature_timestamp: SignatureTimestamp | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> CompleteSigningDigitalSignatureResult:
+        ts = data.get("signatureTimestamp")
         return cls(
             certificate_subject=data["certificateSubject"],
             certificate_serial=data["certificateSerial"],
             certificate_issuer=data["certificateIssuer"],
             algorithm=data["algorithm"],
             signed_at=data["signedAt"],
-            signed_pdf_hash=data["signedPdfHash"],
-            signature_field_name=data["signatureFieldName"],
+            signed_pdf_hash=data.get("signedPdfHash"),
+            signature_field_name=data.get("signatureFieldName"),
+            signed_p7s_hash=data.get("signedP7sHash"),
+            document_format=data.get("documentFormat"),
+            signature_timestamp=SignatureTimestamp.from_dict(ts) if ts else None,
         )
 
 

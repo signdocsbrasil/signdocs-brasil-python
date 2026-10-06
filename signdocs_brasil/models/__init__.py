@@ -44,6 +44,7 @@ from .signing import (
     CompleteSigningResult,
     PrepareSigningRequest,
     PrepareSigningResponse,
+    SignatureTimestamp,
 )
 from .step import (
     CompleteBiometricMatchRequest,
@@ -151,6 +152,7 @@ __all__ = [
     # Signing
     "PrepareSigningRequest",
     "PrepareSigningResponse",
+    "SignatureTimestamp",
     "CompleteSigningRequest",
     "CompleteSigningDigitalSignatureResult",
     "CompleteSigningResult",

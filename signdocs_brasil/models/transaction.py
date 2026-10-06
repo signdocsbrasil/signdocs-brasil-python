@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from signdocs_brasil.models.signing import SignatureTimestamp
+
 TransactionStatus = Literal[
     "CREATED",
     "DOCUMENT_UPLOADED",
@@ -348,9 +350,11 @@ class DigitalSignatureResult:
     signed_pdf_hash: str
     signature_field_name: str
     signed_pdf_s3_key: str | None = None
+    signature_timestamp: SignatureTimestamp | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> DigitalSignatureResult:
+        ts = data.get("signatureTimestamp")
         return cls(
             certificate_subject=data["certificateSubject"],
             certificate_serial=data["certificateSerial"],
@@ -360,6 +364,7 @@ class DigitalSignatureResult:
             signed_pdf_hash=data["signedPdfHash"],
             signature_field_name=data["signatureFieldName"],
             signed_pdf_s3_key=data.get("signedPdfS3Key"),
+            signature_timestamp=SignatureTimestamp.from_dict(ts) if ts else None,
         )
 
 

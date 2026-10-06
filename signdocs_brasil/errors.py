@@ -47,6 +47,17 @@ class ProblemDetail:
             extra=extra,
         )
 
+    @property
+    def code(self) -> str | None:
+        """Stable machine-readable case, when the API gives one (e.g. ``TIMESTAMP_UNAVAILABLE``)."""
+        value = self.extra.get("code")
+        return value if isinstance(value, str) else None
+
+    @property
+    def retryable(self) -> bool:
+        """True when the API states that resending the same request is safe."""
+        return self.extra.get("retryable") is True
+
 
 class SignDocsBrasilError(Exception):
     """Base exception for all SignDocs Brasil SDK errors."""
@@ -67,6 +78,7 @@ class SignDocsBrasilApiError(SignDocsBrasilError):
         self.title: str = problem_detail.title
         self.detail: str | None = problem_detail.detail
         self.instance: str | None = problem_detail.instance
+        self.code: str | None = problem_detail.code
         self.problem_detail: ProblemDetail = problem_detail
 
 
